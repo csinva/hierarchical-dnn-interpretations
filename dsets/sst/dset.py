@@ -3,7 +3,6 @@ import numpy as np
 from torchtext import data, datasets
 import random
 
-
 # load the model
 def get_model(snapshot_file):
     print('loading', snapshot_file)
@@ -36,7 +35,7 @@ def get_sst():
     return inputs, answers, train_iter, dev_iter
 
 # get specific batches
-def get_batches(batch_nums, train_iterator, dev_iterator, dset='train'):
+def get_batches(batch_nums, train_iterator, dev_iterator, dset='dev'):
     print('getting batches...')
     np.random.seed(13)
     random.seed(13)

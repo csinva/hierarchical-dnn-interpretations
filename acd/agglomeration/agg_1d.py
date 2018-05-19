@@ -1,32 +1,11 @@
 import sys
 import numpy as np
 import copy
-import tiling_text
+import tiling_1d as tiling
 import cd
 import torch
 from skimage import measure
 import score_funcs
-
-
-# converts build up tiles into indices for cd
-# Cd requires batch of [start, stop) with unigrams working
-# build up tiles are of the form [0, 0, 12, 35, 0, 0]
-# return a list of starts and indices
-def tiles_to_cd(batch):
-    starts, stops = [], []
-    tiles = batch.text.data.cpu().numpy()
-    L = tiles.shape[0]
-    for c in range(tiles.shape[1]):
-        text = tiles[:, c]
-        start = 0
-        stop = L - 1
-        while text[start] == 0:
-            start += 1
-        while text[stop] == 0:
-            stop -= 1
-        starts.append(start)
-        stops.append(stop)
-    return starts, stops
 
 
 # threshold scores at a specific percentile
@@ -63,7 +42,7 @@ def sweep_agglomerative(model, batch, percentile_include, method, sweep_dim,
                             score_orig=None, text_orig=text_orig, subtract=subtract)[0]
 
     # get scores
-    texts = tiling_text.gen_tiles(text_orig, method=method, sweep_dim=sweep_dim)
+    texts = tiling.gen_tiles(text_orig, method=method, sweep_dim=sweep_dim)
     texts = texts.transpose()
     batch.text.data = torch.LongTensor(texts).cuda()
     scores = score_funcs.get_scores_1d(batch, model, method, label, only_one=False,
@@ -89,10 +68,10 @@ def sweep_agglomerative(model, batch, percentile_include, method, sweep_dim,
 
             # make component tile
             comp_tile_bool = (comps == comp_num)
-            comp_tile = tiling_text.gen_tile_from_comp(text_orig, comp_tile_bool, method)
+            comp_tile = tiling.gen_tile_from_comp(text_orig, comp_tile_bool, method)
 
             # make tiles around component
-            border_tiles = tiling_text.gen_tiles_around_baseline(text_orig, comp_tile_bool,
+            border_tiles = tiling.gen_tiles_around_baseline(text_orig, comp_tile_bool,
                                                                  method=method,
                                                                  sweep_dim=sweep_dim)
 

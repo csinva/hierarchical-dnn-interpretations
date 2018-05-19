@@ -138,3 +138,24 @@ def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, layer='softm
     if scores.ndim == 1:
         scores = scores.reshape(1, -1)
     return scores
+
+
+# converts build up tiles into indices for cd
+# Cd requires batch of [start, stop) with unigrams working
+# build up tiles are of the form [0, 0, 12, 35, 0, 0]
+# return a list of starts and indices
+def tiles_to_cd(batch):
+    starts, stops = [], []
+    tiles = batch.text.data.cpu().numpy()
+    L = tiles.shape[0]
+    for c in range(tiles.shape[1]):
+        text = tiles[:, c]
+        start = 0
+        stop = L - 1
+        while text[start] == 0:
+            start += 1
+        while text[stop] == 0:
+            stop -= 1
+        starts.append(start)
+        stops.append(stop)
+    return starts, stops
