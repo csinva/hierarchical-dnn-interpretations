@@ -4,12 +4,12 @@ import numpy as np
 # pytorch needs to return each input as a column
 # return batch_size x L tensor
 def gen_tiles(text, fill=0,
-              method='break_down', prev_text=None, sweep_dim=1):
+              method='occlusion', prev_text=None, sweep_dim=1):
     L = text.shape[0]
     texts = np.zeros((L - sweep_dim + 1, L), dtype=np.int)
     for start in range(L - sweep_dim + 1):
         end = start + sweep_dim
-        if method == 'break_down':
+        if method == 'occlusion':
             text_new = np.copy(text).flatten()
             text_new[start:end] = fill
         elif method == 'build_up' or method == 'cd':
@@ -21,7 +21,7 @@ def gen_tiles(text, fill=0,
 
 # return tile representing component
 def gen_tile_from_comp(text_orig, comp_tile, method, fill=0):
-    if method == 'break_down':
+    if method == 'occlusion':
         tile_new = np.copy(text_orig).flatten()
         tile_new[comp_tile] = fill
     elif method == 'build_up' or method == 'cd':
@@ -43,7 +43,7 @@ def gen_tiles_around_baseline(text_orig, comp_tile, method='build_up', sweep_dim
     right = min(L - 1, right + sweep_dim)
     tiles = []
     for x in [left, right]:
-        if method == 'break_down':
+        if method == 'occlusion':
             tile_new = np.copy(text_orig).flatten()
             tile_new[comp_tile] = fill
             tile_new[x] = fill

@@ -3,11 +3,11 @@ from math import ceil
 
 
 def combine_tiles(tile1, tile2, method='cd'):
-    if not method == 'break_down':
+    if not method == 'occlusion':
         return tile1 + tile2
 
 
-def gen_tiles(image, fill=0, method='break_down', prev_im=None,
+def gen_tiles(image, fill=0, method='occlusion', prev_im=None,
               sweep_dim=1, num_ims=None, im_num_start=0):
     R = image.shape[0]
     C = image.shape[1]
@@ -36,7 +36,7 @@ def gen_tiles(image, fill=0, method='break_down', prev_im=None,
                 cmax = min(cmin + sweep_dim, C)
 
                 # create appropriate images
-                if method == 'break_down':
+                if method == 'occlusion':
                     im = np.copy(image)
                     im[rmin:rmax, cmin:cmax] = fill  # image[r-1:r+1, c-1:c+1]
                     if not prev_im is None:
@@ -57,7 +57,7 @@ def gen_tiles(image, fill=0, method='break_down', prev_im=None,
 
 
 def gen_tiles_around_baseline(im_orig, comp_tile, fill=0,
-                              method='break_down', sweep_dim=3):
+                              method='occlusion', sweep_dim=3):
     R = im_orig.shape[0]
     C = im_orig.shape[1]
     dim_2 = (sweep_dim // 2)  # note the +1 for adjacent, but non-overlapping tiles
@@ -80,7 +80,7 @@ def gen_tiles_around_baseline(im_orig, comp_tile, fill=0,
                 # new block borders old block
                 if comp_tile[rminus, cmin] or comp_tile[rmin, cminus] or comp_tile[rplus, cmin] or comp_tile[
                     rmin, cplus]:
-                    if method == 'break_down':
+                    if method == 'occlusion':
                         im = np.copy(im_orig)  # im_orig background
                         im[rmin:rmax, cmin:cmax] = fill  # black out new block
                         im[comp_tile] = fill  # black out comp_tile
@@ -102,7 +102,7 @@ def gen_tiles_around_baseline(im_orig, comp_tile, fill=0,
 def gen_tile_from_comp(im_orig, comp_tile_downsampled, sweep_dim, method, fill=0):
     R = im_orig.shape[0]
     C = im_orig.shape[1]
-    if method == 'break_down':
+    if method == 'occlusion':
         im = np.copy(im_orig)
         #         im[comp_tile] = fill
         # fill in comp_tile with fill

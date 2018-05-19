@@ -109,7 +109,7 @@ def get_scores_1d(batch, model, method, label, only_one, score_orig, text_orig, 
                                for i in range(len(starts))])
     else:
         scores = model(batch).data.cpu().numpy()
-        if method == 'break_down' and not only_one:
+        if method == 'occlusion' and not only_one:
             scores = score_orig - scores
 
     # get score for other class
@@ -130,7 +130,7 @@ def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, layer='softm
             scores.append(pred_ims(model, ims[i])[0])
         scores = np.squeeze(np.array(scores))
     # scores = pred_ims(model, ims, layer)
-    elif method == 'break_down':
+    elif method == 'occlusion':
         for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
             scores.append(pred_ims(model, ims[i])[0])
         scores = -1 * np.squeeze(np.array(scores))
