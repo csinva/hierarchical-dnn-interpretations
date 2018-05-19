@@ -1,13 +1,11 @@
 import sys
-
-sys.path.append('../scores')
-sys.path.append('../util')
 import numpy as np
 import copy
 import tiling_text
 import cd
 import torch
 from skimage import measure
+import score_funcs
 
 
 # converts build up tiles into indices for cd
@@ -29,31 +27,6 @@ def tiles_to_cd(batch):
         starts.append(start)
         stops.append(stop)
     return starts, stops
-
-
-# return scores (higher is better)
-def get_scores(batch, model, method, label, only_one, score_orig,
-               text_orig, subtract=False):
-    # calculate scores
-    if method == 'cd':
-        if only_one:
-            num_words = batch.text.data.cpu().numpy().shape[0]
-            scores = np.expand_dims(cd.cd_text(batch, model, start=0, stop=num_words), axis=0)
-        else:
-            starts, stops = tiles_to_cd(batch)
-            batch.text.data = torch.LongTensor(text_orig).cuda()
-            scores = np.array([cd.cd_text(batch, model, start=starts[i], stop=stops[i])
-                               for i in range(len(starts))])
-    else:
-        scores = model(batch).data.cpu().numpy()
-        if method == 'break_down' and not only_one:
-            scores = score_orig - scores
-
-    # get score for other class
-    if subtract:
-        return scores[:, label] - scores[:, int(1 - label)]
-    else:
-        return scores[:, label]
 
 
 # threshold scores at a specific percentile
@@ -86,14 +59,14 @@ def sweep_agglomerative(model, batch, percentile_include, method, sweep_dim,
     # get original text and score
     text_orig = batch.text.data.cpu().numpy()
     text_deep = copy.deepcopy(batch.text)
-    score_orig = get_scores(batch, model, method, label, only_one=True,
+    score_orig = score_funcs.get_scores_1d(batch, model, method, label, only_one=True,
                             score_orig=None, text_orig=text_orig, subtract=subtract)[0]
 
     # get scores
     texts = tiling_text.gen_tiles(text_orig, method=method, sweep_dim=sweep_dim)
     texts = texts.transpose()
     batch.text.data = torch.LongTensor(texts).cuda()
-    scores = get_scores(batch, model, method, label, only_one=False,
+    scores = score_funcs.get_scores_1d(batch, model, method, label, only_one=False,
                         score_orig=score_orig, text_orig=text_orig, subtract=subtract)
 
     # threshold scores
@@ -129,7 +102,7 @@ def sweep_agglomerative(model, batch, percentile_include, method, sweep_dim,
             batch.text.data = torch.LongTensor(tiles_concat).cuda()
 
             # get scores (comp tile at 0, others afterwards)
-            scores_all = get_scores(batch, model, method, label, only_one=False,
+            scores_all = score_funcs.get_scores_1d(batch, model, method, label, only_one=False,
                                     score_orig=score_orig, text_orig=text_orig, subtract=subtract)
             score_comp = np.copy(scores_all[0])
             scores_border_tiles = np.copy(scores_all[1:])

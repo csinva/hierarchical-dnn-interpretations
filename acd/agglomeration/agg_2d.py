@@ -1,15 +1,12 @@
 import sys
-
-sys.path.append('../scores')
-sys.path.append('../util')
 import numpy as np
-import tiling
+import tiling_2d as tiling
 import cd
 from skimage import measure  # for connected components
 from math import ceil
 from scipy.signal import convolve2d
 from copy import deepcopy
-
+import score_funcs
 
 def sum_interactions(lists):
     comps_list = lists['comps_list']
@@ -36,28 +33,6 @@ def sum_interactions(lists):
         for cluster in cluster_list:
             int_sums[idx] += np.sum(np.abs(cluster_scores[idx][cluster] - cluster_sums[cluster]))
     return np.sum(int_sums), int_sums
-
-
-# return scores (higher is better)
-def get_scores(model, method, ims, im_torch=None, pred_ims=None, layer='softmax', model_type='mnist'):
-    scores = []
-    if method == 'cd':
-        for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
-            scores.append(cd.cd(np.expand_dims(ims[i], 0), im_torch, model, model_type)[0].data.cpu().numpy())
-        scores = np.squeeze(np.array(scores))
-    elif method == 'build_up':
-        for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
-            scores.append(pred_ims(model, ims[i], layer)[0])
-        scores = np.squeeze(np.array(scores))
-    # scores = pred_ims(model, ims, layer)
-    elif method == 'break_down':
-        for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
-            scores.append(pred_ims(model, ims[i], layer)[0])
-        scores = -1 * np.squeeze(np.array(scores))
-    # scores = -1 * pred_ims(model, ims, layer)
-    if scores.ndim == 1:
-        scores = scores.reshape(1, -1)
-    return scores
 
 
 # score doesn't have to just be prediction for label
@@ -156,7 +131,7 @@ def agglomerate(model, pred_ims, percentile_include, method, sweep_dim,
     # get scores
     if not batch:
         tiles = tiling.gen_tiles(im_orig, fill=0, method=method, sweep_dim=sweep_dim)
-        scores_orig_raw = get_scores(model, method, ims=tiles, im_torch=im_torch,
+        scores_orig_raw = score_funcs.get_scores_2d(model, method, ims=tiles, im_torch=im_torch,
                                      pred_ims=pred_ims, layer=layer, model_type=model_type)
         scores_track = np.copy(refine_scores(scores_orig_raw, lab_num)).reshape(
             size_downsampled)  # keep track of these scores
@@ -171,12 +146,12 @@ def agglomerate(model, pred_ims, percentile_include, method, sweep_dim,
     im_thresh_list = [im_thresh]
     comps_list = []
     if not method == 'cd':
-        comp_scores_raw_list = [{0: get_scores(model, 'build_up',
+        comp_scores_raw_list = [{0: score_funcs.get_scores_2d(model, 'build_up',
                                                ims=np.expand_dims(im_orig, 0),  # score for full image
                                                im_torch=im_torch, pred_ims=pred_ims, layer=layer,
                                                model_type=model_type)[0]}]
     else:
-        comp_scores_raw_list = [{0: get_scores(model, method,
+        comp_scores_raw_list = [{0: score_funcs.get_scores_2d(model, method,
                                                ims=np.expand_dims(np.ones(im_orig.transpose().shape), 0),
                                                # score for full image
                                                im_torch=im_torch, pred_ims=pred_ims, layer=layer,
@@ -241,7 +216,7 @@ def agglomerate(model, pred_ims, percentile_include, method, sweep_dim,
             tiles = np.concatenate((np.expand_dims(comp_tiles[comp_num], 0),  # baseline tile at 0
                                     np.expand_dims(comps_combined_tile, 0),  # combined tile at 1
                                     comp_surround_tiles[comp_num]))  # all others afterwards
-            scores_raw = get_scores(model, method, ims=tiles, im_torch=im_torch,
+            scores_raw = score_funcs.get_scores_2d(model, method, ims=tiles, im_torch=im_torch,
                                     pred_ims=pred_ims, layer=layer, model_type=model_type)
 
             # decipher scores
@@ -325,7 +300,7 @@ def agglomerate_final(lists, model, pred_ims, percentile_include, method, sweep_
         for key in comp_tiles_comb.keys():
             # calculate scores
             tiles = 1.0 * np.expand_dims(comp_tiles_comb[key], 0)
-            scores_raw = get_scores(model, method, ims=tiles, im_torch=im_torch,
+            scores_raw = score_funcs.get_scores_2d(model, method, ims=tiles, im_torch=im_torch,
                                     pred_ims=pred_ims, layer=layer, model_type=model_type)
 
             # refine scores for correct class - todo this doesn't work with refine_scores
