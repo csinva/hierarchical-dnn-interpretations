@@ -119,7 +119,7 @@ def get_scores_1d(batch, model, method, label, only_one, score_orig, text_orig, 
         return scores[:, label]
     
 # return scores (higher is better)
-def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, layer='softmax', model_type='mnist'):
+def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type='mnist'):
     scores = []
     if method == 'cd':
         for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
@@ -129,12 +129,10 @@ def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, layer='softm
         for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
             scores.append(pred_ims(model, ims[i])[0])
         scores = np.squeeze(np.array(scores))
-    # scores = pred_ims(model, ims, layer)
     elif method == 'occlusion':
         for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
             scores.append(pred_ims(model, ims[i])[0])
         scores = -1 * np.squeeze(np.array(scores))
-    # scores = -1 * pred_ims(model, ims, layer)
     if scores.ndim == 1:
         scores = scores.reshape(1, -1)
     return scores
