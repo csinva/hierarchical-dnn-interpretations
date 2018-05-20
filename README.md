@@ -3,7 +3,6 @@ Code for using / reproducing ACD from the paper "Hierarchical interpretations fo
 *note: this repo is still under development. For any questions please file an Issue*
 
 # documentation
-
 - also contains pytorch codes for interpretation baselines such as integrated gradients, occlusion
 - allows for different types of interpretations by changing hyperparameters (explained in examples)
 - tested with python3 and pytorch 0.3 on gpu

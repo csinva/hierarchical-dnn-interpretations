@@ -1,32 +1,11 @@
 import sys
 import numpy as np
 import copy
-import tiling_text
+import tiling_1d as tiling
 import cd
 import torch
 from skimage import measure
 import score_funcs
-
-
-# converts build up tiles into indices for cd
-# Cd requires batch of [start, stop) with unigrams working
-# build up tiles are of the form [0, 0, 12, 35, 0, 0]
-# return a list of starts and indices
-def tiles_to_cd(batch):
-    starts, stops = [], []
-    tiles = batch.text.data.cpu().numpy()
-    L = tiles.shape[0]
-    for c in range(tiles.shape[1]):
-        text = tiles[:, c]
-        start = 0
-        stop = L - 1
-        while text[start] == 0:
-            start += 1
-        while text[stop] == 0:
-            stop -= 1
-        starts.append(start)
-        stops.append(stop)
-    return starts, stops
 
 
 # threshold scores at a specific percentile
@@ -54,8 +33,8 @@ def threshold_scores(scores, percentile_include, absolute):
 
 
 # agglomerative sweep - black out selected pixels from before and resweep over the entire image
-def sweep_agglomerative(model, batch, percentile_include, method, sweep_dim,
-                        text_orig, label, num_iters=5, subtract=False, absolute=True):
+def agglomerate(model, batch, percentile_include, method, sweep_dim,
+                        text_orig, label, num_iters=5, subtract=True, absolute=True):
     # get original text and score
     text_orig = batch.text.data.cpu().numpy()
     text_deep = copy.deepcopy(batch.text)
@@ -63,7 +42,7 @@ def sweep_agglomerative(model, batch, percentile_include, method, sweep_dim,
                             score_orig=None, text_orig=text_orig, subtract=subtract)[0]
 
     # get scores
-    texts = tiling_text.gen_tiles(text_orig, method=method, sweep_dim=sweep_dim)
+    texts = tiling.gen_tiles(text_orig, method=method, sweep_dim=sweep_dim)
     texts = texts.transpose()
     batch.text.data = torch.LongTensor(texts).cuda()
     scores = score_funcs.get_scores_1d(batch, model, method, label, only_one=False,
@@ -89,10 +68,10 @@ def sweep_agglomerative(model, batch, percentile_include, method, sweep_dim,
 
             # make component tile
             comp_tile_bool = (comps == comp_num)
-            comp_tile = tiling_text.gen_tile_from_comp(text_orig, comp_tile_bool, method)
+            comp_tile = tiling.gen_tile_from_comp(text_orig, comp_tile_bool, method)
 
             # make tiles around component
-            border_tiles = tiling_text.gen_tiles_around_baseline(text_orig, comp_tile_bool,
+            border_tiles = tiling.gen_tiles_around_baseline(text_orig, comp_tile_bool,
                                                                  method=method,
                                                                  sweep_dim=sweep_dim)
 
@@ -138,54 +117,6 @@ def sweep_agglomerative(model, batch, percentile_include, method, sweep_dim,
             'comps_list': comps_list,  # arrs of comps with diff number for each comp
             'comp_scores_list': comp_scores_list,  # dicts with score for each comp
             'score_orig': score_orig}  # original score
-
-
-def interaction_sum(lists):
-    comp_list = lists['comps_list']
-    score_list = lists['comp_scores_list']
-    word_scores = lists['scores_list'][0]
-    # print(len(comp_list))
-    abs_sum = 0
-    num_joins = 0
-    for i, comps in enumerate(comp_list):
-        # print("Big", i)
-        prev_blob = -1
-        start_ind = -1
-        found_blob = False
-        for j, blob in enumerate(comps):
-            # print(j)
-            if blob != 0 and blob == prev_blob:
-                if not found_blob:
-                    found_blob = True
-                    start_ind = j - 1
-                    # print("Blob", j, blob, prev_blob)
-
-            if found_blob and (blob != prev_blob or j == len(comps) - 1):
-                # Found blob
-                linear_blob_score = 0
-                if blob != prev_blob:
-                    blob_list = comp_list[i - 1][start_ind:j]
-                else:
-                    blob_list = comp_list[i - 1][start_ind:]
-                if len(np.unique(blob_list)) > 1 or sum(blob_list != 0) == 0:
-                    zero_inds = np.where(blob_list == 0)[0] + start_ind
-                    linear_score = np.sum(word_scores[zero_inds])
-                    unique_inds = np.unique(blob_list)
-                    linear_score += sum([score_list[i - 1][u_ind] for u_ind in unique_inds
-                                         if u_ind != 0])
-                    comp_score = score_list[i][prev_blob]
-                    interaction = comp_score - linear_score
-                    # print("Blob", "Zero", zero_inds, "Blob inds", unique_inds, i, "start/end", start_ind, j)
-                    # print(linear_score, comp_score, interaction)
-                    abs_sum += abs(interaction)  # ** 2
-                    num_joins += 1
-
-                found_blob = False
-                start_ind = -1
-
-            prev_blob = blob
-    return abs_sum, num_joins
-
 
 def collapse_tree(lists):
     '''

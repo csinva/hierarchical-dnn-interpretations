@@ -119,7 +119,7 @@ def get_scores_1d(batch, model, method, label, only_one, score_orig, text_orig, 
         return scores[:, label]
     
 # return scores (higher is better)
-def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, layer='softmax', model_type='mnist'):
+def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type='mnist'):
     scores = []
     if method == 'cd':
         for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
@@ -129,12 +129,31 @@ def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, layer='softm
         for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
             scores.append(pred_ims(model, ims[i])[0])
         scores = np.squeeze(np.array(scores))
-    # scores = pred_ims(model, ims, layer)
     elif method == 'occlusion':
         for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
             scores.append(pred_ims(model, ims[i])[0])
         scores = -1 * np.squeeze(np.array(scores))
-    # scores = -1 * pred_ims(model, ims, layer)
     if scores.ndim == 1:
         scores = scores.reshape(1, -1)
     return scores
+
+
+# converts build up tiles into indices for cd
+# Cd requires batch of [start, stop) with unigrams working
+# build up tiles are of the form [0, 0, 12, 35, 0, 0]
+# return a list of starts and indices
+def tiles_to_cd(batch):
+    starts, stops = [], []
+    tiles = batch.text.data.cpu().numpy()
+    L = tiles.shape[0]
+    for c in range(tiles.shape[1]):
+        text = tiles[:, c]
+        start = 0
+        stop = L - 1
+        while text[start] == 0:
+            start += 1
+        while text[stop] == 0:
+            stop -= 1
+        starts.append(start)
+        stops.append(stop)
+    return starts, stops

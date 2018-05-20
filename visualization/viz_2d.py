@@ -192,8 +192,8 @@ def visualize_dict_list(dict_list, method='break-down / build-up',
     preds_orig = dict_list[0][0]
 
     #     try:
-    vmin = min([np.min(d[key]) for d in dict_list[1:] for key in d])
-    vmax = max([np.max(d[key]) for d in dict_list[1:] for key in d])
+    vmin = min([np.min(d[key]) for d in dict_list[1:] for key in d]) - 1
+    vmax = max([np.max(d[key]) for d in dict_list[1:] for key in d]) + 1
     if lab_num is None:
         vmin = min(vmin, np.min(preds_orig))
         vmax = max(vmax, np.max(preds_orig))
@@ -226,7 +226,7 @@ def visualize_dict_list(dict_list, method='break-down / build-up',
                 region_arr = dict_list[i][region_num]
                 #             for class_num in range(10):
                 #                 print(class_num, region_arr[class_num])
-                plt.plot(region_arr, '_', markeredgewidth=1)
+                plt.plot(region_arr, '_', markeredgewidth=2.5)
                 plt.ylim((vmin, vmax))
 
         cur_axes = plt.gca()

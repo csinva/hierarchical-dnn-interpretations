@@ -6,3 +6,5 @@ __pycache__
 **.pyc
 **.swp
 **cache*
+reproduce_figs/mnist_data
+reproduce_figs/mnist/data
