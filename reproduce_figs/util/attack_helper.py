@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 import torch
 import foolbox
 from torch.autograd import Variable
+import random
 
-
-def attack_im_num(im_num, attack_type):
+def attack_im_num(dset, model, im_num, attack_type):
     # seed
     np.random.seed(13)
     random.seed(13)
