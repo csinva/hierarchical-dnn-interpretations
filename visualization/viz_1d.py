@@ -44,7 +44,7 @@ def print_scores(lists, text_orig, num_iters):
             print(comp_num, '\t%.3f, %s' % (comp_score, str(text_orig[comps == comp_num])))
 
 
-def word_heatmap(text_orig, lists, label_pred, label, method, subtract=True, mturk=False, no_text=False, data=None):
+def word_heatmap(text_orig, lists, label_pred, label, method=None, subtract=True, data=None, fontsize=9):
     text_orig = np.array(text_orig)
     num_words = text_orig.size
     num_iters = len(lists['comps_list'])
@@ -93,7 +93,7 @@ def word_heatmap(text_orig, lists, label_pred, label, method, subtract=True, mtu
                    norm=MidpointNormalize(vmin=abs_lim * -1, midpoint=0., vmax=abs_lim),
                    cmap=cmap)
 
-    def show_values(pc, text_orig, data, fmt="%s", **kw):
+    def show_values(pc, text_orig, data, fontsize, fmt="%s", **kw):
         val_mean = np.nanmean(data)
         val_min = np.min(data)
         pc.update_scalarmappable()
@@ -114,36 +114,15 @@ def word_heatmap(text_orig, lists, label_pred, label, method, subtract=True, mtu
             if y_ind == 0 or data[y_ind, x_ind] != 0:  # > val_min:
                 ax.text(x, y, fmt % text_orig[x_ind],
                         ha="center", va="center",
-                        color=color, fontsize=9, **kw)
+                        color=color, fontsize=fontsize, **kw)
 
-    class_pred = 'pos' if label_pred == 0 else 'neg'
-    class_actual = 'pos' if label == 0 else 'neg'
-
-    show_values(c, text_orig, data)
-    if not mturk:
-        plt.title(method +
-                  ' score_orig: ' + '{:.2f}'.format(lists['score_orig']) +
-                  ' pred: ' + class_pred +
-                  ' label: ' + class_actual +
-                  ' subtract: ' + str(subtract))
-        #         plt.ylabel('Tree level')
-        plt.xlabel(' '.join(text_orig))
-        cb = plt.colorbar(c, extend='both')  # fig.colorbar(pcm, ax=ax[0], extend='both')
-        cb.outline.set_visible(False)
+    show_values(c, text_orig, data, fontsize)
+    cb = plt.colorbar(c, extend='both')  # fig.colorbar(pcm, ax=ax[0], extend='both')
+    cb.outline.set_visible(False)
     plt.xlim((0, num_words))
     plt.ylim((0, num_iters))
     plt.yticks([])
     plt.plot([0, num_words], [1, 1], color='black')
-
     plt.xticks([])
 
-    if no_text and not mturk:
-        cb.ax.set_title('CD score')
-        plt.title("")
-        plt.xlabel("")
-    # cb.set_ticks([])
-    # clean up a lot of the viz
-    if mturk:
-        plt.title("")
-        plt.ylabel("")
-        plt.xlabel("")
+    cb.ax.set_title('CD score')
