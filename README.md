@@ -23,3 +23,22 @@ Code for using / reproducing ACD from the paper "[Hierarchical interpretations f
 - this work is part of an overarching project on interpretable machine learning, guided by the [PDR framework](https://arxiv.org/abs/1901.04592)
 - for related work, see the [github repo](https://github.com/jamie-murdoch/ContextualDecomposition) for contextual decomposition ([ICLR 2018](https://openreview.net/pdf?id=rkRwGg-0Z))
 - the file scores/score_funcs.py also contains simple pytorch implementations of [integrated gradients](https://arxiv.org/abs/1703.01365) and the simple interpration technique gradient * input
+
+
+
+# reference
+
+- feel free to use/share this code openly
+
+- if you find this code useful for your research, please cite the following:
+
+  ```c
+  @article{singh2018hierarchical,
+    title={Hierarchical interpretations for neural network predictions},
+    author={Singh, Chandan and Murdoch, W James and Yu, Bin},
+    journal={arXiv preprint arXiv:1806.05337},
+    year={2018}
+  }
+  ```
+
+  
