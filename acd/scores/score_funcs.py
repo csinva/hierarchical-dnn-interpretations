@@ -1,4 +1,3 @@
-from torch.autograd import Variable
 import torch
 import numpy as np
 import torch.nn.functional as F
@@ -9,8 +8,8 @@ import copy
 import cd
 
 
-def gradient_times_input_scores(im, ind, model):
-    ind = Variable(torch.LongTensor([np.int(ind)]).cuda(), requires_grad=False)
+def gradient_times_input_scores(im, ind, model, device='cuda'):
+    ind = Variable(torch.LongTensor([np.int(ind)]).to(device), requires_grad=False)
     if im.grad is not None:
         im.grad.data.zero_()
     pred = model(im)
@@ -21,7 +20,7 @@ def gradient_times_input_scores(im, ind, model):
     return res.data.cpu().numpy()[0, 0]
 
 
-def ig_scores_2d(model, im_torch, num_classes=10, im_size=28, sweep_dim=1, ind=None):
+def ig_scores_2d(model, im_torch, num_classes=10, im_size=28, sweep_dim=1, ind=None, device='cuda'):
     # Compute IG scores
     for p in model.parameters():
         if p.grad is not None:
@@ -38,16 +37,16 @@ def ig_scores_2d(model, im_torch, num_classes=10, im_size=28, sweep_dim=1, ind=N
         criterion = torch.nn.L1Loss(size_average=False)
         mult_grid = np.array(range(M)) / (M - 1)
 
-        baseline = torch.zeros(im_torch.shape).cuda()
+        baseline = torch.zeros(im_torch.shape).to(device)
 
-        input_vecs = torch.Tensor(M, baseline.size(1), baseline.size(2), baseline.size(3)).cuda()
+        input_vecs = torch.Tensor(M, baseline.size(1), baseline.size(2), baseline.size(3)).to(device)
         for i, prop in enumerate(mult_grid):
-            input_vecs[i] = baseline + (prop * (im_torch.data - baseline)).cuda()
+            input_vecs[i] = baseline + (prop * (im_torch.data - baseline)).to(device)
 
         input_vecs = Variable(input_vecs, requires_grad=True)
 
         out = F.softmax(model(input_vecs))[:, class_to_explain]
-        loss = criterion(out, Variable(torch.zeros(M).cuda()))
+        loss = criterion(out, Variable(torch.zeros(M).to(device)))
         loss.backward()
 
         imps = input_vecs.grad.mean(0).data * (im_torch.data - baseline)
@@ -62,7 +61,7 @@ def ig_scores_2d(model, im_torch, num_classes=10, im_size=28, sweep_dim=1, ind=N
     return output
 
 
-def ig_scores_1d(batch, model, inputs):
+def ig_scores_1d(batch, model, inputs, device='cuda'):
     for p in model.parameters():
         if p.grad is not None:
             p.grad.data.zero_()
@@ -74,17 +73,17 @@ def ig_scores_1d(batch, model, inputs):
     baseline_text = copy.deepcopy(batch.text)
     baseline_text.data[:, :] = inputs.vocab.stoi['.']
     baseline = model.embed(baseline_text).data
-    input_vecs = torch.Tensor(baseline.size(0), M, baseline.size(2)).cuda()
+    input_vecs = torch.Tensor(baseline.size(0), M, baseline.size(2)).to(device)
     for i, prop in enumerate(mult_grid):
-        input_vecs[:, i, :] = baseline + (prop * (word_vecs - baseline)).cuda()
+        input_vecs[:, i, :] = baseline + (prop * (word_vecs - baseline)).to(device)
 
     input_vecs = Variable(input_vecs, requires_grad=True)
 
-    hidden = (Variable(torch.zeros(1, M, model.hidden_dim).cuda()),
-              Variable(torch.zeros(1, M, model.hidden_dim).cuda()))
+    hidden = (Variable(torch.zeros(1, M, model.hidden_dim).to(device)),
+              Variable(torch.zeros(1, M, model.hidden_dim).to(device)))
     lstm_out, hidden = model.lstm(input_vecs, hidden)
     logits = F.softmax(model.hidden_to_label(lstm_out[-1]))[:, 0]
-    loss = criterion(logits, Variable(torch.zeros(M)).cuda())
+    loss = criterion(logits, Variable(torch.zeros(M)).to(device))
     loss.backward()
     imps = input_vecs.grad.mean(1).data * (word_vecs[:, 0] - baseline[:, 0])
     zero_pred = logits[0]
@@ -95,8 +94,9 @@ def ig_scores_1d(batch, model, inputs):
     #     print((logits[-1] - zero_pred) - ig_scores.sum())
     return scores.cpu().numpy()
 
+
 # return scores (higher is better)
-def get_scores_1d(batch, model, method, label, only_one, score_orig, text_orig, subtract=False):
+def get_scores_1d(batch, model, method, label, only_one, score_orig, text_orig, subtract=False, device='cuda'):
     # calculate scores
     if method == 'cd':
         if only_one:
@@ -104,7 +104,7 @@ def get_scores_1d(batch, model, method, label, only_one, score_orig, text_orig, 
             scores = np.expand_dims(cd.cd_text(batch, model, start=0, stop=num_words), axis=0)
         else:
             starts, stops = tiles_to_cd(batch)
-            batch.text.data = torch.LongTensor(text_orig).cuda()
+            batch.text.data = torch.LongTensor(text_orig).to(device)
             scores = np.array([cd.cd_text(batch, model, start=starts[i], stop=stops[i])
                                for i in range(len(starts))])
     else:
@@ -117,13 +117,14 @@ def get_scores_1d(batch, model, method, label, only_one, score_orig, text_orig, 
         return scores[:, label] - scores[:, int(1 - label)]
     else:
         return scores[:, label]
-    
+
+
 # return scores (higher is better)
-def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type='mnist'):
+def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type='mnist', device='cuda'):
     scores = []
     if method == 'cd':
         for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
-            scores.append(cd.cd(np.expand_dims(ims[i], 0), im_torch, model, model_type)[0].data.cpu().numpy())
+            scores.append(cd.cd(np.expand_dims(ims[i], 0), im_torch, model, model_type, device=device)[0].data.cpu().numpy())
         scores = np.squeeze(np.array(scores))
     elif method == 'build_up':
         for i in range(ims.shape[0]):  # can use tqdm here, need to use batches

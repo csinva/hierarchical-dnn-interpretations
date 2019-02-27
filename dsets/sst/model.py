@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-from torch.autograd import Variable
 
 
 class LSTMSentiment(nn.Module):
@@ -18,12 +17,14 @@ class LSTMSentiment(nn.Module):
         self.hidden_to_label = nn.Linear(self.hidden_dim, self.num_labels)
 
     def forward(self, batch):
-        if self.use_gpu:
-            self.hidden = (Variable(torch.zeros(1, batch.text.size()[1], self.hidden_dim).cuda()),
-                           Variable(torch.zeros(1, batch.text.size()[1], self.hidden_dim).cuda()))
-        else:
-            self.hidden = (Variable(torch.zeros(1, batch.text.size()[1], self.hidden_dim)),
-                           Variable(torch.zeros(1, batch.text.size()[1], self.hidden_dim)))
+        self.hidden = (torch.zeros(1, batch.text.size()[1], self.hidden_dim).to(self.device),
+                       torch.zeros(1, batch.text.size()[1], self.hidden_dim).to(self.device))
+        # if self.use_gpu:
+        #     self.hidden = (Variable(torch.zeros(1, batch.text.size()[1], self.hidden_dim).cuda()),
+        #                    Variable(torch.zeros(1, batch.text.size()[1], self.hidden_dim).cuda()))
+        # else:
+        #     self.hidden = (Variable(torch.zeros(1, batch.text.size()[1], self.hidden_dim)),
+        #                    Variable(torch.zeros(1, batch.text.size()[1], self.hidden_dim)))
 
         vecs = self.embed(batch.text)
         lstm_out, self.hidden = self.lstm(vecs, self.hidden)

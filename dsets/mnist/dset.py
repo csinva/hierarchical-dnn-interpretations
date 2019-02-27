@@ -32,8 +32,8 @@ def get_args():
 
 
 # load data
-def load_data(train_batch_size, test_batch_size, use_cuda, data_dir='data', shuffle=False):
-    kwargs = {'num_workers': 1, 'pin_memory': True} if use_cuda else {}
+def load_data(train_batch_size, test_batch_size, device, data_dir='data', shuffle=False):
+    kwargs = {'num_workers': 1, 'pin_memory': True} if device == 'cuda' else {}
     train_loader = torch.utils.data.DataLoader(
         datasets.MNIST(data_dir, train=True, download=True,
                        transform=transforms.Compose([
@@ -88,14 +88,14 @@ def test(model, test_loader):
         100. * correct / len(test_loader.dataset)))
 
 
-def get_im_and_label(num):
+def get_im_and_label(num, device='cuda'):
     torch.manual_seed(130)
     _, data_loader = load_data(train_batch_size=1, test_batch_size=1,
-                               use_cuda=True, data_dir='mnist/data',
+                               device=device, data_dir='mnist/data',
                                shuffle=False)
     for i, im in enumerate(data_loader):
         if i == num:
-            return Variable(im[0].cuda()), im[0].numpy().squeeze(), im[1].numpy()[0]
+            return im[0].to(device), im[0].numpy().squeeze(), im[1].numpy()[0]
 
 
 def pred_ims(model, ims, layer='softmax'):

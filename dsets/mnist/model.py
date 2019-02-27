@@ -31,7 +31,7 @@ class Net(nn.Module):
         x = self.fc2(x)
         return x
 
-    def predict(self, x):
+    def predicted_class(self, x):
         pred = self.forward(x)
         _, pred = pred[0].max(0)
-        return pred.data[0]
+        return pred.item() #data[0]

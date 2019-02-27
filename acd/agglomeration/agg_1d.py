@@ -34,19 +34,19 @@ def threshold_scores(scores, percentile_include, absolute):
 
 # agglomerative sweep - black out selected pixels from before and resweep over the entire image
 def agglomerate(model, batch, percentile_include, method, sweep_dim,
-                        text_orig, label, num_iters=5, subtract=True, absolute=True):
+                        text_orig, label, num_iters=5, subtract=True, absolute=True, device='cuda'):
     # get original text and score
     text_orig = batch.text.data.cpu().numpy()
     text_deep = copy.deepcopy(batch.text)
     score_orig = score_funcs.get_scores_1d(batch, model, method, label, only_one=True,
-                            score_orig=None, text_orig=text_orig, subtract=subtract)[0]
+                            score_orig=None, text_orig=text_orig, subtract=subtract, device=device)[0]
 
     # get scores
     texts = tiling.gen_tiles(text_orig, method=method, sweep_dim=sweep_dim)
     texts = texts.transpose()
-    batch.text.data = torch.LongTensor(texts).cuda()
+    batch.text.data = torch.LongTensor(texts).to(device)
     scores = score_funcs.get_scores_1d(batch, model, method, label, only_one=False,
-                        score_orig=score_orig, text_orig=text_orig, subtract=subtract)
+                        score_orig=score_orig, text_orig=text_orig, subtract=subtract, device=device)
 
     # threshold scores
     mask = threshold_scores(scores, percentile_include, absolute=absolute)
@@ -78,11 +78,11 @@ def agglomerate(model, batch, percentile_include, method, sweep_dim,
             # predict for all tiles
             # format tiles into batch
             tiles_concat = np.hstack((comp_tile, np.squeeze(border_tiles[0]).transpose()))
-            batch.text.data = torch.LongTensor(tiles_concat).cuda()
+            batch.text.data = torch.LongTensor(tiles_concat).to(device)
 
             # get scores (comp tile at 0, others afterwards)
             scores_all = score_funcs.get_scores_1d(batch, model, method, label, only_one=False,
-                                    score_orig=score_orig, text_orig=text_orig, subtract=subtract)
+                                    score_orig=score_orig, text_orig=text_orig, subtract=subtract, device=device)
             score_comp = np.copy(scores_all[0])
             scores_border_tiles = np.copy(scores_all[1:])
 

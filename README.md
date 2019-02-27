@@ -6,12 +6,14 @@ Code for using / reproducing ACD from the paper "[Hierarchical interpretations f
 
 # documentation
 
-- also contains pytorch codes for interpretation baselines such as integrated gradients, occlusion
+- fully-contained data/models/code for reproducing and experimenting with ACD
+- see the [reproduce_figs](reproduce_figs) folder for notebooks with examples of using ACD to reproduce figures in the paper
+  - try your own examples on these models with simple alterations to the notebooks
+- additional documented is provided in readmes of subfolders and inline comments
 - allows for different types of interpretations by changing hyperparameters (explained in examples)
-- tested with python3 and pytorch with/without gpu
-- see the reproduce_figs folder for notebooks with examples of using ACD to reproduce figures in the paper
+- tested with python3 and pytorch 1.0 with/without gpu
 
-# using ACD
+# using ACD on your own data
 
 - to use ACD on your own model, replace the models in the examples with your own trained models. Specifically, 3 things must be altered:
   1. the pred_ims function must be replaced by a function you write using your own trained model. This function gets predictions from a model given a batch of examples.
@@ -23,8 +25,6 @@ Code for using / reproducing ACD from the paper "[Hierarchical interpretations f
 - this work is part of an overarching project on interpretable machine learning, guided by the [PDR framework](https://arxiv.org/abs/1901.04592)
 - for related work, see the [github repo](https://github.com/jamie-murdoch/ContextualDecomposition) for contextual decomposition ([ICLR 2018](https://openreview.net/pdf?id=rkRwGg-0Z))
 - the file scores/score_funcs.py also contains simple pytorch implementations of [integrated gradients](https://arxiv.org/abs/1703.01365) and the simple interpration technique gradient * input
-
-
 
 # reference
 

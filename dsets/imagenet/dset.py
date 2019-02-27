@@ -65,7 +65,7 @@ def load_data(imagenet_dir='/scratch/users/jmurdoch/imagenet'):
     return train_loader, val_loader
 
 
-def get_im_and_label(num, train=False):
+def get_im_and_label(num, train=False, device='cuda'):
     torch.manual_seed(130)
     if train:
         data_loader, _ = load_data()  # train_loader, val_loader = load_data()
@@ -75,7 +75,7 @@ def get_im_and_label(num, train=False):
         if i == num:
             im_orig = np.copy(im[0].numpy()).squeeze()  # original numpy image for viewing
             im_norm = normalize(im[0][0]).unsqueeze(0)
-            im_torch = Variable(im_norm.cuda())  # torch image for passing through net
+            im_torch = im_norm.to(device)  # torch image for passing through net
             label = im[1].numpy()[0]
             return im_torch, im_orig.transpose((1, 2, 0)), label
 
