@@ -14,9 +14,21 @@ Official code for using / reproducing ACD from the paper "[Hierarchical interpre
 - allows for different types of interpretations by changing hyperparameters (explained in examples)
 - tested with python3 and pytorch 1.0 with/without gpu (although cpu doesn't work very well for vision models)
 
-|                                        |                                     |                                     |
-| -------------------------------------- | ----------------------------------- | ----------------------------------- |
+| Inspecting NLP sentiment models    | Detecting adversarial examples      | Analyzing imagenet models           |
+| ---------------------------------- | ----------------------------------- | ----------------------------------- |
+| ![](reproduce_figs/figs/fig_2.png) | ![](reproduce_figs/figs/fig_s3.png) | ![](reproduce_figs/figs/fig_s2.png) |
+
+|                                    |                                     |                                     |
+| ---------------------------------- | ----------------------------------- | ----------------------------------- |
+| ![](reproduce_figs/figs/fig_2.png) | ![](reproduce_figs/figs/fig_s3.png) | ![](reproduce_figs/figs/fig_s2.png) |
+
+
+
+
+|      |      |      |
+| ---- | ---- | ---- |
 | <img src="reproduce_figs/figs/fig_2.png" width="33%"> | <img src="reproduce_figs/figs/fig_s3.png" width="33%"> | <img src="reproduce_figs/figs/fig_s2.png" width="33%"> |
+
 
 
 
