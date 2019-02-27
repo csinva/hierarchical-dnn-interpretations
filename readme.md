@@ -2,7 +2,7 @@ Official code for using / reproducing ACD from the paper "[Hierarchical interpre
 
 *Note: this repo is actively maintained. For any questions please file an issue.*
 
-![](intro.png)
+![](reproduce_figs/figs/intro.png)
 
 # documentation
 

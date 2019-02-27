@@ -18,7 +18,7 @@ def propagate_tanh_two(a, b):
 
 
 # propagate convolutional or linear layer
-def propagate_conv_linear(relevant, irrelevant, module, device='cpu'):
+def propagate_conv_linear(relevant, irrelevant, module, device='cuda'):
     bias = module(torch.zeros(irrelevant.size()).to(device))
     rel = module(relevant) - bias
     irrel = module(irrelevant) - bias
@@ -33,7 +33,7 @@ def propagate_conv_linear(relevant, irrelevant, module, device='cpu'):
 
 
 # propagate ReLu nonlinearity
-def propagate_relu(relevant, irrelevant, activation, device='cpu'):
+def propagate_relu(relevant, irrelevant, activation, device='cuda'):
     swap_inplace = False
     try:  # handles inplace
         if activation.inplace:
@@ -85,10 +85,11 @@ def propagate_dropout(relevant, irrelevant, dropout):
 
 
 # get contextual decomposition scores for blob
-def cd(blob, im_torch, model, model_type='mnist', device='cpu'):
+def cd(blob, im_torch, model, model_type='mnist', device='cuda'):
     # set up model
     model.eval()
-
+    im_torch = im_torch.to(device)
+    
     # set up blobs
     blob = torch.FloatTensor(blob).to(device)
     relevant = blob * im_torch
@@ -217,7 +218,7 @@ def cd_track_vgg(blob, im_torch, model, model_type='vgg'):
     model.eval()
 
     # set up blobs
-    blob = Variable(torch.cuda.FloatTensor(blob))
+    blob = torch.cuda.FloatTensor(blob)
     relevant = blob * im_torch
     irrelevant = (1 - blob) * im_torch
 

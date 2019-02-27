@@ -1,4 +1,4 @@
-**This folder contains notebooks to reproduce / extend the results in the paper.**text datasets
+**This folder contains notebooks to reproduce / extend the results in the paper.**
 
 The [text notebook](text_fig2.ipynb) contains code to load a pretrained model on the SST dataset. Then, you can give it different sentences and observe the hierarchical interpretations it produces.
 
