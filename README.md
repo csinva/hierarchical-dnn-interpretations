@@ -10,6 +10,7 @@ Official code for using / reproducing ACD from the paper "[Hierarchical interpre
 - see the [reproduce_figs](reproduce_figs) folder for notebooks with examples of using ACD to reproduce figures in the paper
   - try your own examples on these models with simple alterations to the notebooks
 - for additional details, see the [acd](acd) folder which contains a bulk of the code for getting importance scores and aggregating them
+    - the [dsets](dsets) folder contains small data/models/dataloaders for using different data sets 
     - more documentation is provided in readmes of subfolders and inline comments
 - allows for different types of interpretations by changing hyperparameters (explained in examples)
 - tested with python3 and pytorch 1.0 with/without gpu (although cpu doesn't work very well for vision models)
@@ -17,18 +18,6 @@ Official code for using / reproducing ACD from the paper "[Hierarchical interpre
 | Inspecting NLP sentiment models    | Detecting adversarial examples      | Analyzing imagenet models           |
 | ---------------------------------- | ----------------------------------- | ----------------------------------- |
 | ![](reproduce_figs/figs/fig_2.png) | ![](reproduce_figs/figs/fig_s3.png) | ![](reproduce_figs/figs/fig_s2.png) |
-
-|                                    |                                     |                                     |
-| ---------------------------------- | ----------------------------------- | ----------------------------------- |
-| ![](reproduce_figs/figs/fig_2.png) | ![](reproduce_figs/figs/fig_s3.png) | ![](reproduce_figs/figs/fig_s2.png) |
-
-
-
-
-|      |      |      |
-| ---- | ---- | ---- |
-| <img src="reproduce_figs/figs/fig_2.png" width="33%"> | <img src="reproduce_figs/figs/fig_s3.png" width="33%"> | <img src="reproduce_figs/figs/fig_s2.png" width="33%"> |
-
 
 
 
