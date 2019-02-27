@@ -18,8 +18,8 @@ def propagate_tanh_two(a, b):
 
 
 # propagate convolutional or linear layer
-def propagate_conv_linear(relevant, irrelevant, module):
-    bias = module(torch.zeros(irrelevant.size()).cuda())
+def propagate_conv_linear(relevant, irrelevant, module, device='cpu'):
+    bias = module(torch.zeros(irrelevant.size()).to(device))
     rel = module(relevant) - bias
     irrel = module(irrelevant) - bias
 
@@ -33,15 +33,15 @@ def propagate_conv_linear(relevant, irrelevant, module):
 
 
 # propagate ReLu nonlinearity
-def propagate_relu(relevant, irrelevant, activation):
+def propagate_relu(relevant, irrelevant, activation, device='cpu'):
     swap_inplace = False
-    try:  # todo handle this better - activation.inplace doesn't exist for all nets
+    try:  # handles inplace
         if activation.inplace:
             swap_inplace = True
             activation.inplace = False
     except:
         pass
-    zeros = Variable(torch.zeros(relevant.size()).cuda())
+    zeros = torch.zeros(relevant.size()).to(device)
     rel_score = activation(relevant)
     irrel_score = activation(relevant + irrelevant) - activation(relevant)
     if swap_inplace:
@@ -85,7 +85,7 @@ def propagate_dropout(relevant, irrelevant, dropout):
 
 
 # get contextual decomposition scores for blob
-def cd(blob, im_torch, model, model_type='mnist', device='cuda'):
+def cd(blob, im_torch, model, model_type='mnist', device='cpu'):
     # set up model
     model.eval()
 
@@ -210,7 +210,8 @@ def cd_text(batch, model, start, stop):
     return scores
 
 
-# get contextual decomposition scores for blob
+# this implementation of cd is very long so that we can view CD at intermediate layers
+# in reality, this should be a loop which uses the above functions
 def cd_track_vgg(blob, im_torch, model, model_type='vgg'):
     # set up model
     model.eval()

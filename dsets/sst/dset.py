@@ -3,16 +3,6 @@ import numpy as np
 from torchtext import data, datasets
 import random
 
-# load the model
-def get_model(snapshot_file):
-    print('loading', snapshot_file)
-    try:  # load onto gpu
-        model = torch.load(snapshot_file)
-        print('loaded onto gpu...')
-    except:  # load onto cpu
-        model = torch.load(snapshot_file, map_location=lambda storage, loc: storage)
-        print('loaded onto cpu...')
-    return model
 
 # set up data loaders
 def get_sst():
@@ -33,6 +23,7 @@ def get_sst():
         (train, dev, test), batch_size=1, device=0)
 
     return inputs, answers, train_iter, dev_iter
+
 
 # get specific batches
 def get_batches(batch_nums, train_iterator, dev_iterator, dset='dev'):

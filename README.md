@@ -1,4 +1,4 @@
-Code for using / reproducing ACD from the paper "[Hierarchical interpretations for neural network predictions](https://openreview.net/pdf?id=SkEqro0ctQ)" (ICLR 2019). This code produces hierarchical interpretations for different types of trained neural networks in pytorch.
+Official code for using / reproducing ACD from the paper "[Hierarchical interpretations for neural network predictions](https://openreview.net/pdf?id=SkEqro0ctQ)" (ICLR 2019). This code produces hierarchical interpretations for different types of trained neural networks in pytorch.
 
 *Note: this repo is actively maintained. For any questions please file an issue.*
 
@@ -9,9 +9,16 @@ Code for using / reproducing ACD from the paper "[Hierarchical interpretations f
 - fully-contained data/models/code for reproducing and experimenting with ACD
 - see the [reproduce_figs](reproduce_figs) folder for notebooks with examples of using ACD to reproduce figures in the paper
   - try your own examples on these models with simple alterations to the notebooks
-- additional documented is provided in readmes of subfolders and inline comments
+- for additional details, see the [acd](acd) folder which contains a bulk of the code for getting importance scores and aggregating them
+    - more documentation is provided in readmes of subfolders and inline comments
 - allows for different types of interpretations by changing hyperparameters (explained in examples)
-- tested with python3 and pytorch 1.0 with/without gpu
+- tested with python3 and pytorch 1.0 with/without gpu (although cpu doesn't work very well for vision models)
+
+|                                        |                                     |                                     |
+| -------------------------------------- | ----------------------------------- | ----------------------------------- |
+| <img src="reproduce_figs/figs/fig_2.png" width="33%"> | <img src="reproduce_figs/figs/fig_s3.png" width="33%"> | <img src="reproduce_figs/figs/fig_s2.png" width="33%"> |
+
+
 
 # using ACD on your own data
 

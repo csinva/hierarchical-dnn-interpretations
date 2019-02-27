@@ -212,8 +212,8 @@ def agglomerate(model, pred_ims, percentile_include, method, sweep_dim,
              'comp_scores_raw_list': comp_scores_raw_list,  # dicts, each key is a number corresponding to a component
              'comp_scores_raw_combined_list': comp_scores_raw_combined_list,
              # arrs representing scores for all current comps combined
-             'scores_orig_raw': scores_orig_raw}  # one arr with original scores of pixels
-    lists['num_before_final'] = len(im_thresh_list)
+             'scores_orig_raw': scores_orig_raw,
+             'num_before_final': len(im_thresh_list)}  # one arr with original scores of pixels
     lists = agglomerate_final(lists, model, pred_ims, percentile_include, method, sweep_dim,
                               im_orig, lab_num, num_iters=5, im_torch=im_torch, model_type=model_type)
 

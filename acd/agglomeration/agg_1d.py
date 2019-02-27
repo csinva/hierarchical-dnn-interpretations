@@ -1,8 +1,5 @@
-import sys
 import numpy as np
-import copy
 import tiling_1d as tiling
-import cd
 import torch
 from skimage import measure
 import score_funcs
@@ -34,19 +31,18 @@ def threshold_scores(scores, percentile_include, absolute):
 
 # agglomerative sweep - black out selected pixels from before and resweep over the entire image
 def agglomerate(model, batch, percentile_include, method, sweep_dim,
-                        text_orig, label, num_iters=5, subtract=True, absolute=True, device='cuda'):
+                label, num_iters=5, subtract=True, absolute=True, device='cuda'):
     # get original text and score
     text_orig = batch.text.data.cpu().numpy()
-    text_deep = copy.deepcopy(batch.text)
     score_orig = score_funcs.get_scores_1d(batch, model, method, label, only_one=True,
-                            score_orig=None, text_orig=text_orig, subtract=subtract, device=device)[0]
+                                           score_orig=None, text_orig=text_orig, subtract=subtract, device=device)[0]
 
     # get scores
     texts = tiling.gen_tiles(text_orig, method=method, sweep_dim=sweep_dim)
     texts = texts.transpose()
     batch.text.data = torch.LongTensor(texts).to(device)
     scores = score_funcs.get_scores_1d(batch, model, method, label, only_one=False,
-                        score_orig=score_orig, text_orig=text_orig, subtract=subtract, device=device)
+                                       score_orig=score_orig, text_orig=text_orig, subtract=subtract, device=device)
 
     # threshold scores
     mask = threshold_scores(scores, percentile_include, absolute=absolute)
@@ -72,8 +68,8 @@ def agglomerate(model, batch, percentile_include, method, sweep_dim,
 
             # make tiles around component
             border_tiles = tiling.gen_tiles_around_baseline(text_orig, comp_tile_bool,
-                                                                 method=method,
-                                                                 sweep_dim=sweep_dim)
+                                                            method=method,
+                                                            sweep_dim=sweep_dim)
 
             # predict for all tiles
             # format tiles into batch
@@ -82,7 +78,8 @@ def agglomerate(model, batch, percentile_include, method, sweep_dim,
 
             # get scores (comp tile at 0, others afterwards)
             scores_all = score_funcs.get_scores_1d(batch, model, method, label, only_one=False,
-                                    score_orig=score_orig, text_orig=text_orig, subtract=subtract, device=device)
+                                                   score_orig=score_orig, text_orig=text_orig, subtract=subtract,
+                                                   device=device)
             score_comp = np.copy(scores_all[0])
             scores_border_tiles = np.copy(scores_all[1:])
 
@@ -93,8 +90,6 @@ def agglomerate(model, batch, percentile_include, method, sweep_dim,
             tiles_idxs = border_tiles[1]
             for i, idx in enumerate(tiles_idxs):
                 scores[idx] = scores_border_tiles[i] - score_comp
-
-                # todo - make a max, keep track of where come from
 
         # get class preds and thresholded image
         scores[mask_list[-1]] = np.nan
@@ -118,14 +113,17 @@ def agglomerate(model, batch, percentile_include, method, sweep_dim,
             'comp_scores_list': comp_scores_list,  # dicts with score for each comp
             'score_orig': score_orig}  # original score
 
+
+'''
+{'scores_list': scores_list, # arrs of scores (nan for selected)
+'mask_list': mask_list, # boolean arrs of selected
+'comps_list': comps_list, # arrs of comps with diff number for each comp
+'comp_scores_list': comp_scores_list, # dicts with score for each comp
+'score_orig':score_orig} # original score
+'''
+
+
 def collapse_tree(lists):
-    '''
-    {'scores_list': scores_list, # arrs of scores (nan for selected)
-    'mask_list': mask_list, # boolean arrs of selected
-    'comps_list': comps_list, # arrs of comps with diff number for each comp
-    'comp_scores_list': comp_scores_list, # dicts with score for each comp
-    'score_orig':score_orig} # original score
-    '''
     num_iters = len(lists['comps_list'])
     num_words = len(lists['comps_list'][0])
 

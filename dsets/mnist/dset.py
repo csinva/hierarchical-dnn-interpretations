@@ -4,7 +4,6 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
-from torch.autograd import Variable
 import numpy as np
 from model import Net
 
@@ -55,7 +54,6 @@ def train(epoch, train_loader):
     for batch_idx, (data, target) in enumerate(train_loader):
         if args.cuda:
             data, target = data.cuda(), target.cuda()
-        data, target = Variable(data), Variable(target)
         optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum)
         optimizer.zero_grad()
         output = model(data)
@@ -76,7 +74,6 @@ def test(model, test_loader):
     for data, target in test_loader:
         if args.cuda:
             data, target = data.cuda(), target.cuda()
-        data, target = Variable(data, volatile=True), Variable(target)
         output = model(data)
         test_loss += F.nll_loss(output, target, size_average=False).data[0]  # sum up batch loss
         pred = output.data.max(1, keepdim=True)[1]  # get the index of the max log-probability
@@ -98,10 +95,10 @@ def get_im_and_label(num, device='cuda'):
             return im[0].to(device), im[0].numpy().squeeze(), im[1].numpy()[0]
 
 
-def pred_ims(model, ims, layer='softmax'):
+def pred_ims(model, ims, layer='softmax', device='cuda'):
     if len(ims.shape) == 2:
         ims = np.expand_dims(ims, 0)
-    ims_torch = Variable(torch.unsqueeze(torch.from_numpy(ims), 1)).float().cuda()
+    ims_torch = torch.unsqueeze(torch.Tensor(ims), 1).float().to(device) # cuda()
     preds = model(ims_torch)
 
     # todo - build in logit support

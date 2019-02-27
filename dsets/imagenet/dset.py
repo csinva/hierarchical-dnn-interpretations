@@ -1,11 +1,8 @@
 import numpy as np
 from os.path import join as oj
-
 import torch
 import torchvision.datasets as datasets
-
 from torchvision import transforms
-from torch.autograd import Variable
 
 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                  std=[0.229, 0.224, 0.225])
@@ -19,12 +16,13 @@ def pred_ims(model, ims):
 
     # convert batch_size x WHC -> batch_size x CWH
     ims_t = np.copy(ims.transpose((0, 3, 1, 2)))
-    ims_torch = torch.from_numpy(ims_t)
+    ims_torch = torch.Tensor(ims_t)
 
     # do normalization
     for i in range(batch_size):
         ims_torch[i] = normalize(ims_torch[i])
-    ims_torch = Variable(ims_torch).float().cuda()
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    ims_torch = ims_torch.float().to(device)
 
     # get prediction
     preds = model(ims_torch)

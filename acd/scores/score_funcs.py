@@ -9,7 +9,7 @@ import cd
 
 
 def gradient_times_input_scores(im, ind, model, device='cuda'):
-    ind = Variable(torch.LongTensor([np.int(ind)]).to(device), requires_grad=False)
+    ind = torch.LongTensor([np.int(ind)]).to(device)
     if im.grad is not None:
         im.grad.data.zero_()
     pred = model(im)
@@ -43,10 +43,10 @@ def ig_scores_2d(model, im_torch, num_classes=10, im_size=28, sweep_dim=1, ind=N
         for i, prop in enumerate(mult_grid):
             input_vecs[i] = baseline + (prop * (im_torch.data - baseline)).to(device)
 
-        input_vecs = Variable(input_vecs, requires_grad=True)
+        input_vecs = input_vecs
 
         out = F.softmax(model(input_vecs))[:, class_to_explain]
-        loss = criterion(out, Variable(torch.zeros(M).to(device)))
+        loss = criterion(out, torch.zeros(M).to(device))
         loss.backward()
 
         imps = input_vecs.grad.mean(0).data * (im_torch.data - baseline)
@@ -69,7 +69,6 @@ def ig_scores_1d(batch, model, inputs, device='cuda'):
     criterion = torch.nn.L1Loss(size_average=False)
     mult_grid = np.array(range(M)) / (M - 1)
     word_vecs = model.embed(batch.text).data
-    sent_len = batch.text.size(0)
     baseline_text = copy.deepcopy(batch.text)
     baseline_text.data[:, :] = inputs.vocab.stoi['.']
     baseline = model.embed(baseline_text).data
@@ -77,13 +76,13 @@ def ig_scores_1d(batch, model, inputs, device='cuda'):
     for i, prop in enumerate(mult_grid):
         input_vecs[:, i, :] = baseline + (prop * (word_vecs - baseline)).to(device)
 
-    input_vecs = Variable(input_vecs, requires_grad=True)
+    input_vecs = input_vecs
 
-    hidden = (Variable(torch.zeros(1, M, model.hidden_dim).to(device)),
-              Variable(torch.zeros(1, M, model.hidden_dim).to(device)))
+    hidden = (torch.zeros(1, M, model.hidden_dim).to(device),
+              torch.zeros(1, M, model.hidden_dim).to(device))
     lstm_out, hidden = model.lstm(input_vecs, hidden)
     logits = F.softmax(model.hidden_to_label(lstm_out[-1]))[:, 0]
-    loss = criterion(logits, Variable(torch.zeros(M)).to(device))
+    loss = criterion(logits, torch.zeros(M).to(device))
     loss.backward()
     imps = input_vecs.grad.mean(1).data * (word_vecs[:, 0] - baseline[:, 0])
     zero_pred = logits[0]
