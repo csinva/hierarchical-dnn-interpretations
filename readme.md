@@ -1,4 +1,4 @@
-Official code for using / reproducing ACD from the paper "[Hierarchical interpretations for neural network predictions](https://openreview.net/pdf?id=SkEqro0ctQ)" (ICLR 2019). This code produces hierarchical interpretations for different types of trained neural networks in pytorch.
+Official code for using / reproducing ACD from the paper "[Hierarchical interpretations for neural network predictions](https://openreview.net/pdf?id=SkEqro0ctQ)" (ICLR 2019). This code produces hierarchical interpretations for any type of neural network trained in pytorch.
 
 *Note: this repo is actively maintained. For any questions please file an issue.*
 
@@ -31,7 +31,7 @@ Official code for using / reproducing ACD from the paper "[Hierarchical interpre
 # related work
 
 - this work is part of an overarching project on interpretable machine learning, guided by the [PDR framework](https://arxiv.org/abs/1901.04592)
-- for related work, see the [github repo](https://github.com/jamie-murdoch/ContextualDecomposition) for contextual decomposition ([ICLR 2018](https://openreview.net/pdf?id=rkRwGg-0Z))
+- for related work, see the [github repo](https://github.com/jamie-murdoch/ContextualDecomposition) for [disentangled attribution curves](https://arxiv.org/abs/1905.07631)
 - the file scores/score_funcs.py also contains simple pytorch implementations of [integrated gradients](https://arxiv.org/abs/1703.01365) and the simple interpration technique gradient * input
 
 # reference
