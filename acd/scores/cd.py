@@ -6,8 +6,25 @@ from scipy.special import expit as sigmoid
 from cd_propagate import *
 
 
-# get contextual decomposition scores for blob
-def cd(blob, im_torch, model, model_type='mnist', device='cuda'):
+def cd(blob, im_torch, model, model_type=None, device='cuda'):
+    '''Get contextual decomposition scores for blob
+    
+    Params
+    ------
+        blob: array_like
+            array with 1s marking the locations of relevant pixels, 0s otherwise
+        im_torch: torch.Tensor
+            example to interpret
+        model_type: str, optional
+            toggles flag for specific mnist model
+    Returns
+    -------
+        relevant: torch.Tensor
+            class-wise scores for relevant blob
+        irrelevant: torch.Tensor
+            class-wise scores for everything but the relevant blob 
+    '''
+    
     # set up model
     model.eval()
     im_torch = im_torch.to(device)
@@ -56,8 +73,23 @@ def cd(blob, im_torch, model, model_type='mnist', device='cuda'):
     return relevant, irrelevant
 
 
-# batch of [start, stop) with unigrams working
 def cd_text(batch, model, start, stop):
+    '''Get contextual decomposition scores for substring of a text sequence
+    
+    Params
+    ------
+        batch: torchtext batch
+            really only requires that batch.text is the string input to be interpreted
+        start: int
+            beginning index of substring to be interpreted (inclusive)
+        stop: int
+            ending index of substring to be interpreted (inclusive)
+
+    Returns
+    -------
+        scores: torch.Tensor
+            class-wise scores for relevant substring
+    '''
     weights = model.lstm.state_dict()
 
     # Index one = word vector (i) or hidden state (h), index two = gate
@@ -102,10 +134,9 @@ def cd_text(batch, model, start, stop):
         rel_contrib_g, irrel_contrib_g, bias_contrib_g = propagate_three(rel_g, irrel_g, b_g, np.tanh)
 
         relevant[i] = rel_contrib_i * (rel_contrib_g + bias_contrib_g) + bias_contrib_i * rel_contrib_g
-        irrelevant[i] = irrel_contrib_i * (rel_contrib_g + irrel_contrib_g + bias_contrib_g) + (
-                                                                                                   rel_contrib_i + bias_contrib_i) * irrel_contrib_g
+        irrelevant[i] = irrel_contrib_i * (rel_contrib_g + irrel_contrib_g + bias_contrib_g) + (rel_contrib_i + bias_contrib_i) * irrel_contrib_g
 
-        if i >= start and i < stop:
+        if i >= start and i <= stop:
             relevant[i] += bias_contrib_i * bias_contrib_g
         else:
             irrelevant[i] += bias_contrib_i * bias_contrib_g
@@ -133,9 +164,10 @@ def cd_text(batch, model, start, stop):
     return scores
 
 
-# this implementation of cd is very long so that we can view CD at intermediate layers
-# in reality, this should be a loop which uses the above functions
 def cd_track_vgg(blob, im_torch, model, model_type='vgg'):
+    '''This implementation of cd is very long so that we can view CD at intermediate layers
+    In reality, one should use the loop contained in the above cd function
+    '''
     # set up model
     model.eval()
 
