@@ -6,6 +6,7 @@ import sys
 from conv2dnp import conv2dnp
 import copy
 import cd
+from tqdm import tqdm
 
 
 def gradient_times_input_scores(im, ind, model, device='cuda'):
@@ -20,14 +21,19 @@ def gradient_times_input_scores(im, ind, model, device='cuda'):
     return res.data.cpu().numpy()[0, 0]
 
 
+
+
 def ig_scores_2d(model, im_torch, num_classes=10, im_size=28, sweep_dim=1, ind=None, device='cuda'):
-    # Compute IG scores
+    '''Compute IG scores
+    '''
+    
     for p in model.parameters():
         if p.grad is not None:
             p.grad.data.zero_()
-
+            
     # What class to produce explanations for
     output = np.zeros((im_size * im_size // (sweep_dim * sweep_dim), num_classes))
+    
     if ind is None:
         ind = range(num_classes)
     for class_to_explain in ind:
@@ -39,17 +45,25 @@ def ig_scores_2d(model, im_torch, num_classes=10, im_size=28, sweep_dim=1, ind=N
 
         baseline = torch.zeros(im_torch.shape).to(device)
 
-        input_vecs = torch.Tensor(M, baseline.size(1), baseline.size(2), baseline.size(3)).to(device)
+        input_vecs = torch.empty((M, baseline.shape[1],  baseline.shape[2], baseline.shape[3]), 
+                                  dtype=torch.float32,
+                                  device=device, requires_grad=False)
+        '''
+        input_vecs = torch.Tensor(M, baseline.size(1), 
+                                  baseline.size(2), baseline.size(3)).to(device)
+        input_vecs.requires_grad = True
+        '''
         for i, prop in enumerate(mult_grid):
-            input_vecs[i] = baseline + (prop * (im_torch.data - baseline)).to(device)
+            input_vecs[i].data = baseline + (prop * (im_torch.to(device) - baseline))
+        input_vecs.requires_grad=True
 
-        input_vecs = input_vecs
+#         input_vecs = input_vecs
 
         out = F.softmax(model(input_vecs))[:, class_to_explain]
         loss = criterion(out, torch.zeros(M).to(device))
         loss.backward()
 
-        imps = input_vecs.grad.mean(0).data * (im_torch.data - baseline)
+        imps = input_vecs.grad.mean(0).data.cpu() * (im_torch.data.cpu() - baseline.cpu())
         ig_scores = imps.sum(1)
 
         # Sanity check: this should be small-ish
@@ -122,15 +136,15 @@ def get_scores_1d(batch, model, method, label, only_one, score_orig, text_orig, 
 def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type='mnist', device='cuda'):
     scores = []
     if method == 'cd':
-        for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
+        for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches
             scores.append(cd.cd(np.expand_dims(ims[i], 0), im_torch, model, model_type, device=device)[0].data.cpu().numpy())
         scores = np.squeeze(np.array(scores))
     elif method == 'build_up':
-        for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
+        for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches
             scores.append(pred_ims(model, ims[i])[0])
         scores = np.squeeze(np.array(scores))
     elif method == 'occlusion':
-        for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
+        for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches
             scores.append(pred_ims(model, ims[i])[0])
         scores = -1 * np.squeeze(np.array(scores))
     if scores.ndim == 1:
