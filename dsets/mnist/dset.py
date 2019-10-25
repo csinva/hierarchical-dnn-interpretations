@@ -5,7 +5,6 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 import numpy as np
-from model import Net
 
 
 # Training settings
@@ -107,6 +106,7 @@ def pred_ims(model, ims, layer='softmax', device='cuda'):
 
 
 if __name__ == '__main__':
+    from model import Net
     args = get_args()
     args.cuda = not args.no_cuda and torch.cuda.is_available()
     torch.manual_seed(args.seed)

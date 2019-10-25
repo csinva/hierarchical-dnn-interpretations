@@ -6,12 +6,12 @@ from scipy.special import expit as sigmoid
 from cd_propagate import *
 
 
-def cd(blob, im_torch, model, model_type=None, device='cuda'):
+def cd(mask, im_torch, model, model_type=None, device='cuda'):
     '''Get contextual decomposition scores for blob
     
     Params
     ------
-        blob: array_like
+        mask: array_like
             array with 1s marking the locations of relevant pixels, 0s otherwise
         im_torch: torch.Tensor
             example to interpret
@@ -20,19 +20,19 @@ def cd(blob, im_torch, model, model_type=None, device='cuda'):
     Returns
     -------
         relevant: torch.Tensor
-            class-wise scores for relevant blob
+            class-wise scores for relevant mask
         irrelevant: torch.Tensor
-            class-wise scores for everything but the relevant blob 
+            class-wise scores for everything but the relevant mask 
     '''
     
     # set up model
     model.eval()
     im_torch = im_torch.to(device)
     
-    # set up blobs
-    blob = torch.FloatTensor(blob).to(device)
-    relevant = blob * im_torch
-    irrelevant = (1 - blob) * im_torch
+    # set up masks
+    mask = torch.FloatTensor(mask).to(device)
+    relevant = mask * im_torch
+    irrelevant = (1 - mask) * im_torch
 
     if model_type == 'mnist':
         scores = []
@@ -73,7 +73,7 @@ def cd(blob, im_torch, model, model_type=None, device='cuda'):
     return relevant, irrelevant
 
 
-def cd_text(batch, model, start, stop):
+def cd_text(batch, model, start, stop, return_irrel_scores=False):
     '''Get contextual decomposition scores for substring of a text sequence
     
     Params
@@ -161,6 +161,9 @@ def cd_text(batch, model, start, stop):
     scores = np.dot(W_out, relevant_h[T - 1])
     irrel_scores = np.dot(W_out, irrelevant_h[T - 1])
 
+    if return_irrel_scores:
+        return scores, irrel_scores
+    
     return scores
 
 
