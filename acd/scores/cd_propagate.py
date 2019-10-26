@@ -5,17 +5,6 @@ import numpy as np
 from scipy.special import expit as sigmoid
 
 
-# propagate a three-part
-def propagate_three(a, b, c, activation):
-    a_contrib = 0.5 * (activation(a + c) - activation(c) + activation(a + b + c) - activation(b + c))
-    b_contrib = 0.5 * (activation(b + c) - activation(c) + activation(a + b + c) - activation(a + c))
-    return a_contrib, b_contrib, activation(c)
-
-
-# propagate tanh nonlinearity
-def propagate_tanh_two(a, b):
-    return 0.5 * (np.tanh(a) + (np.tanh(a + b) - np.tanh(b))), 0.5 * (np.tanh(b) + (np.tanh(a + b) - np.tanh(a)))
-
 
 # propagate convolutional or linear layer
 def propagate_conv_linear(relevant, irrelevant, module, device='cuda'):
@@ -31,6 +20,27 @@ def propagate_conv_linear(relevant, irrelevant, module, device='cuda'):
     prop_irrel = torch.div(prop_irrel, prop_sum)
     return rel + torch.mul(prop_rel, bias), irrel + torch.mul(prop_irrel, bias)
 
+def propagate_pooling(relevant, irrelevant, pooler):
+    '''propagate pooling operation
+    '''
+    # get both indices
+    p = deepcopy(pooler)
+    p.return_indices = True
+    both, both_ind = p(relevant + irrelevant)
+    
+    # pooling function
+    def unpool(tensor, indices):
+        '''unpool tensor given indices for pooling
+        '''
+        batch_size, in_channels, H, W = indices.shape
+        output = torch.ones_like(indices, dtype=torch.float)
+        for i in range(batch_size):
+            for j in range(in_channels):
+                output[i, j] = tensor[i, j].flatten()[indices[i, j].flatten()].reshape(H, W)                
+        return output
+    
+    rel, irrel = unpool(relevant, both_ind), unpool(irrelevant, both_ind)
+    return rel, irrel
 
 # propagate ReLu nonlinearity
 def propagate_relu(relevant, irrelevant, activation, device='cuda'):
@@ -49,36 +59,18 @@ def propagate_relu(relevant, irrelevant, activation, device='cuda'):
     return rel_score, irrel_score
 
 
-# propagate maxpooling operation
-def propagate_pooling(relevant, irrelevant, pooler, model_type='mnist'):
-    if model_type == 'mnist':
-        unpool = torch.nn.MaxUnpool2d(kernel_size=2, stride=2)
-        avg_pooler = torch.nn.AvgPool2d(kernel_size=2, stride=2)
-        window_size = 4
-    elif model_type == 'vgg':
-        unpool = torch.nn.MaxUnpool2d(kernel_size=pooler.kernel_size, stride=pooler.stride)
-        avg_pooler = torch.nn.AvgPool2d(kernel_size=(pooler.kernel_size, pooler.kernel_size),
-                                        stride=(pooler.stride, pooler.stride), count_include_pad=False)
-        window_size = 4
-
-    # get both indices
-    p = deepcopy(pooler)
-    p.return_indices = True
-    both, both_ind = p(relevant + irrelevant)
-    ones_out = torch.ones_like(both)
-    size1 = relevant.size()
-    mask_both = unpool(ones_out, both_ind, output_size=size1)
-
-    # relevant
-    rel = mask_both * relevant
-    rel = avg_pooler(rel) * window_size
-
-    # irrelevant
-    irrel = mask_both * irrelevant
-    irrel = avg_pooler(irrel) * window_size
-    return rel, irrel
-
-
 # propagate dropout operation
 def propagate_dropout(relevant, irrelevant, dropout):
     return dropout(relevant), dropout(irrelevant)
+
+# propagate a three-part
+def propagate_three(a, b, c, activation):
+    a_contrib = 0.5 * (activation(a + c) - activation(c) + activation(a + b + c) - activation(b + c))
+    b_contrib = 0.5 * (activation(b + c) - activation(c) + activation(a + b + c) - activation(a + c))
+    return a_contrib, b_contrib, activation(c)
+
+
+def propagate_tanh_two(a, b):
+    '''propagate tanh nonlinearity
+    '''
+    return 0.5 * (np.tanh(a) + (np.tanh(a + b) - np.tanh(b))), 0.5 * (np.tanh(b) + (np.tanh(a + b) - np.tanh(a)))

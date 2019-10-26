@@ -6,17 +6,19 @@ from scipy.special import expit as sigmoid
 from cd_propagate import *
 
 
-def cd(mask, im_torch, model, model_type=None, device='cuda'):
+def cd(mask, im_torch: torch.Tensor, model, model_type=None, device='cuda'):
     '''Get contextual decomposition scores for blob
     
     Params
     ------
-        mask: array_like
-            array with 1s marking the locations of relevant pixels, 0s otherwise
+        mask: array_like (values in {0, 1})
+            array with 1s marking the locations of relevant pixels, 0s marking the background
+            shape should match the shape of im_torch or just H x W
         im_torch: torch.Tensor
-            example to interpret
+            example to interpret - usually has shape (batch_size, num_channels, height, width)
         model_type: str, optional
-            toggles flag for specific mnist model
+            if this is == 'mnist', uses CD for a specific mnist model
+            usually should just leave this blank
     Returns
     -------
         relevant: torch.Tensor
@@ -34,43 +36,28 @@ def cd(mask, im_torch, model, model_type=None, device='cuda'):
     relevant = mask * im_torch
     irrelevant = (1 - mask) * im_torch
 
+    
     if model_type == 'mnist':
-        scores = []
-        mods = list(model.modules())[1:]
-        relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mods[0])
-        relevant, irrelevant = propagate_pooling(relevant, irrelevant,
-                                                 lambda x: F.max_pool2d(x, 2, return_indices=True), model_type='mnist')
-        relevant, irrelevant = propagate_relu(relevant, irrelevant, F.relu)
-
-        relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mods[1])
-        relevant, irrelevant = propagate_pooling(relevant, irrelevant,
-                                                 lambda x: F.max_pool2d(x, 2, return_indices=True), model_type='mnist')
-        relevant, irrelevant = propagate_relu(relevant, irrelevant, F.relu)
-
-        relevant = relevant.view(-1, 320)
-        irrelevant = irrelevant.view(-1, 320)
-
-        relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mods[3])
-        relevant, irrelevant = propagate_relu(relevant, irrelevant, F.relu)
-
-        relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mods[4])
-
-    else:
-        mods = list(model.modules())
-        for i, mod in enumerate(mods):
-            t = str(type(mod))
-            if 'Conv2d' in t or 'Linear' in t:
-                if 'Linear' in t:
-                    relevant = relevant.view(relevant.size(0), -1)
-                    irrelevant = irrelevant.view(irrelevant.size(0), -1)
-                relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mod)
-            elif 'ReLU' in t:
-                relevant, irrelevant = propagate_relu(relevant, irrelevant, mod)
-            elif 'MaxPool2d' in t:
-                relevant, irrelevant = propagate_pooling(relevant, irrelevant, mod, model_type=model_type)
-            elif 'Dropout' in t:
-                relevant, irrelevant = propagate_dropout(relevant, irrelevant, mod)
+        return cd_propagate_mnist(relevant, irrelevant, model)
+    
+    mods = list(model.modules())
+    for i, mod in enumerate(mods):
+        t = str(type(mod))
+        if 'Conv2d' in t:
+            relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mod)
+        elif 'Linear' in t:
+            relevant = relevant.reshape(relevant.shape[0], -1)
+            irrelevant = irrelevant.reshape(irrelevant.shape[0], -1)
+            relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mod)
+        elif 'ReLU' in t:
+            relevant, irrelevant = propagate_relu(relevant, irrelevant, mod)
+        elif 'MaxPool2d' in t:
+            relevant, irrelevant = propagate_pooling(relevant, irrelevant, mod)
+        elif 'Dropout' in t:
+            relevant, irrelevant = propagate_dropout(relevant, irrelevant, mod)
+                
     return relevant, irrelevant
+
 
 
 def cd_text(batch, model, start, stop, return_irrel_scores=False):
@@ -165,6 +152,28 @@ def cd_text(batch, model, start, stop, return_irrel_scores=False):
         return scores, irrel_scores
     
     return scores
+
+
+def cd_propagate_mnist(relevant, irrelevant, model):
+    mods = list(model.modules())[1:]
+    relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mods[0])
+    relevant, irrelevant = propagate_pooling(relevant, irrelevant,
+                                             lambda x: F.max_pool2d(x, 2, return_indices=True))
+    relevant, irrelevant = propagate_relu(relevant, irrelevant, F.relu)
+
+    relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mods[1])
+    relevant, irrelevant = propagate_pooling(relevant, irrelevant,
+                                             lambda x: F.max_pool2d(x, 2, return_indices=True))
+    relevant, irrelevant = propagate_relu(relevant, irrelevant, F.relu)
+
+    relevant = relevant.view(-1, 320)
+    irrelevant = irrelevant.view(-1, 320)
+    relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mods[3])
+    relevant, irrelevant = propagate_relu(relevant, irrelevant, F.relu)
+
+    relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mods[4])
+
+    return relevant, irrelevant
 
 
 def cd_track_vgg(blob, im_torch, model, model_type='vgg'):

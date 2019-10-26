@@ -76,18 +76,21 @@ def test_mnist(device='cuda'):
     irrel_scores = irrel_scores.cpu().detach().numpy()
     assert(np.allclose(cd_score + irrel_scores, preds, atol=1e-2))
     
-def test_imagenet_vgg(device='cuda'):
+def test_imagenet_vgg(device='cuda', arch='vgg'):
     # get dataset
     from torchvision import models
     imnet_dict = pkl.load(open('../dsets/imagenet/imnet_dict.pkl', 'rb')) # contains 6 images (keys: 9, 10, 34, 20, 36, 32)
 
     # get model and image
-    model = models.vgg16(pretrained=True).to(device).eval()
+    if arch == 'vgg':
+        model = models.vgg16(pretrained=True).to(device).eval()
+    elif arch == 'alexnet':
+        model = models.alexnet(pretrained=True).to(device).eval()
     im_torch = torch.randn(1, 3, 224, 224).to(device)
     
     # check that full image mask = prediction
     preds = model(im_torch).cpu().detach().numpy()
-    cd_score, irrel_scores = cd.cd(np.ones((1, 3, 224, 224)), im_torch, model, model_type='vgg', device=device)
+    cd_score, irrel_scores = cd.cd(np.ones((1, 3, 224, 224)), im_torch, model, device=device)
     cd_score = cd_score.cpu().detach().numpy()
     irrel_scores = irrel_scores.cpu().detach().numpy()
     assert(np.allclose(cd_score, preds, atol=1e-2))
@@ -97,7 +100,7 @@ def test_imagenet_vgg(device='cuda'):
     # preds = preds - model.hidden_to_label.bias.detach().numpy()
     mask = np.ones((1, 3, 224, 224))
     mask[:, :, :14] = 1
-    cd_score, irrel_scores = cd.cd(mask, im_torch, model, model_type='vgg', device=device)
+    cd_score, irrel_scores = cd.cd(mask, im_torch, model, device=device)
     cd_score = cd_score.cpu().detach().numpy()
     irrel_scores = irrel_scores.cpu().detach().numpy()
     assert(np.allclose(cd_score + irrel_scores, preds, atol=1e-2))
@@ -108,7 +111,9 @@ if __name__ == '__main__':
     print('testing mnist...')
     test_mnist()
     print('testing imagenet vgg...')
-    test_imagenet_vgg()
+    test_imagenet_vgg(arch='vgg')
+    print('testing imagenet alexnet...')
+    test_imagenet_vgg(arch='alexnet')
     print('all tests passed!')
     
     # loop over device types?
