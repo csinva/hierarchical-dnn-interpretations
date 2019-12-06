@@ -1,12 +1,12 @@
 import sys
 import numpy as np
-import tiling_2d as tiling
-import cd
+from ..util import tiling_2d as tiling
+from ..scores.cd import cd, cd_text
 from skimage import measure  # for connected components
 from math import ceil
 from scipy.signal import convolve2d
 from copy import deepcopy
-import score_funcs
+from ..scores import score_funcs
 
 
 # score doesn't have to just be prediction for label

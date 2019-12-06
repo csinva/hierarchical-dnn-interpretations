@@ -3,9 +3,9 @@ import numpy as np
 import torch.nn.functional as F
 import torch.nn as nn
 import sys
-from conv2dnp import conv2dnp
+from ..util.conv2dnp import conv2dnp
 import copy
-import cd
+from .cd import cd, cd_text
 from tqdm import tqdm
 
 
@@ -114,11 +114,11 @@ def get_scores_1d(batch, model, method, label, only_one, score_orig, text_orig, 
     if method == 'cd':
         if only_one:
             num_words = batch.text.data.cpu().numpy().shape[0]
-            scores = np.expand_dims(cd.cd_text(batch, model, start=0, stop=num_words), axis=0)
+            scores = np.expand_dims(cd_text(batch, model, start=0, stop=num_words), axis=0)
         else:
             starts, stops = tiles_to_cd(batch)
             batch.text.data = torch.LongTensor(text_orig).to(device)
-            scores = np.array([cd.cd_text(batch, model, start=starts[i], stop=stops[i])
+            scores = np.array([cd_text(batch, model, start=starts[i], stop=stops[i])
                                for i in range(len(starts))])
     else:
         scores = model(batch).data.cpu().numpy()
@@ -137,7 +137,7 @@ def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type='
     scores = []
     if method == 'cd':
         for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches
-            scores.append(cd.cd(np.expand_dims(ims[i], 0), im_torch, model, model_type, device=device)[0].data.cpu().numpy())
+            scores.append(cd(im_torch, model, np.expand_dims(ims[i], 0), model_type, device=device)[0].data.cpu().numpy())
         scores = np.squeeze(np.array(scores))
     elif method == 'build_up':
         for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches

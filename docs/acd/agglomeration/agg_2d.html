@@ -1,0 +1,683 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.7.2" />
+<title>acd.agglomeration.agg_2d API documentation</title>
+<meta name="description" content="" />
+<link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
+<link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
+<style>.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{font-weight:bold}#index h4 + ul{margin-bottom:.6em}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>acd.agglomeration.agg_2d</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">import sys
+import numpy as np
+from ..util import tiling_2d as tiling
+from ..scores.cd import cd, cd_text
+from skimage import measure  # for connected components
+from math import ceil
+from scipy.signal import convolve2d
+from copy import deepcopy
+from ..scores import score_funcs
+
+
+# score doesn&#39;t have to just be prediction for label
+def refine_scores(scores, lab_num):
+    return scores[:, lab_num]
+
+
+# higher scores are more likely to be picked
+def threshold_scores(scores, percentile_include, method):
+    X = scores
+
+    # pick more when more is already picked
+    num_picked = np.sum(np.isnan(scores))
+    if num_picked &gt; scores.size / 3:
+        percentile_include -= 15
+
+    thresh = np.nanpercentile(X, percentile_include)
+    #     thresh = np.max(X) # pick only 1 pixel at a time
+    im_thresh = np.logical_and(scores &gt;= thresh, ~np.isnan(scores))
+    # scores &gt;= thresh #np.logical_and(scores &gt;= thresh, scores != 0)
+
+    # make sure we pick something
+    while np.sum(im_thresh) == 0:
+        percentile_include -= 4
+        thresh = np.nanpercentile(X, percentile_include)
+        #     thresh = np.max(X) # pick only 1 pixel at a time
+        im_thresh = np.logical_and(scores &gt;= thresh, ~np.isnan(scores))
+        # np.logical_and(scores &gt;= thresh, scores != 0)
+    return im_thresh
+
+
+# if 3 sides of a pixel are selected, also select the pixel
+filt = np.zeros((3, 3))
+filt[:, 1] = 1  # middle column
+filt[1, :] = 1  # middle row
+
+
+def smooth_im_thresh(im_thresh_old, im_thresh):
+    im = im_thresh_old + im_thresh
+    im_count_neighbors = convolve2d(im, filt, mode=&#39;same&#39;)
+    pixels_to_add = np.logical_and(np.logical_not(im), im_count_neighbors &gt;= 3)
+    return im + pixels_to_add
+
+
+# establish correspondence between segs
+def establish_correspondence(seg1, seg2):
+    seg_out = np.zeros(seg1.shape, dtype=&#39;int64&#39;)
+    new_counter = 0
+
+    num_segs = int(np.max(seg2))
+    remaining = list(range(1, 12))  # only have 10 colors though
+    for i in range(1, num_segs + 1):
+        seg = seg2 == i
+        old_seg = seg1[seg]
+        matches = np.unique(old_seg[old_seg != 0])
+        num_matches = matches.size
+
+        # new seg
+        if num_matches == 0:
+            new_counter -= 1
+            seg_out[seg] = new_counter
+
+        # 1 match
+        elif num_matches == 1:
+            seg_out[seg] = matches[0]
+            remaining.remove(matches[0])
+
+        # &gt;1 matches (segs merged)
+        else:
+            seg_out[seg] = min(matches)
+            remaining.remove(min(matches))
+
+    # assign new segs    
+    while new_counter &lt; 0:
+        seg_out[seg_out == new_counter] = min(remaining)
+        remaining.remove(min(remaining))
+        new_counter += 1
+
+    return seg_out  # seg2
+
+
+# agglomerate - black out selected pixels from before and resweep over the entire image
+def agglomerate(model, pred_ims, percentile_include, method, sweep_dim,
+                im_orig, lab_num, num_iters=5, im_torch=None, model_type=&#39;mnist&#39;, device=&#39;cuda&#39;):
+    # set up shapes
+    R = im_orig.shape[0]
+    C = im_orig.shape[1]
+    size_downsampled = (ceil(R / sweep_dim), ceil(C / sweep_dim))  # effectively downsampled
+
+    # get scores
+    tiles = tiling.gen_tiles(im_orig, fill=0, method=method, sweep_dim=sweep_dim)
+    scores_orig_raw = score_funcs.get_scores_2d(model, method, ims=tiles, im_torch=im_torch,
+                                                pred_ims=pred_ims, model_type=model_type, device=device)
+    scores_track = np.copy(refine_scores(scores_orig_raw, lab_num)).reshape(
+        size_downsampled)  # keep track of these scores
+
+    # threshold im
+    im_thresh = threshold_scores(scores_track, percentile_include, method)
+
+    # initialize lists
+    scores_list = [np.copy(scores_track)]
+    im_thresh_list = [im_thresh]
+    comps_list = []
+    if not method == &#39;cd&#39;:
+        comp_scores_raw_list = [{0: score_funcs.get_scores_2d(model, &#39;build_up&#39;,
+                                                              ims=np.expand_dims(im_orig, 0),  # score for full image
+                                                              im_torch=im_torch, pred_ims=pred_ims,
+                                                              model_type=model_type, device=device)[0]}]
+    else:
+        comp_scores_raw_list = [{0: score_funcs.get_scores_2d(model, method,
+                                                              ims=np.expand_dims(np.ones(im_orig.transpose().shape), 0),
+                                                              # score for full image
+                                                              im_torch=im_torch, pred_ims=pred_ims,
+                                                              model_type=model_type, device=device)[0]}]
+    comp_scores_raw_combined_list = []
+
+    # iterate
+    for step in range(num_iters):
+        # if already selected all pixels then break
+        if np.sum(im_thresh_list[-1]) == R * C:
+            break
+
+        # find connected components for regions
+        comps = np.copy(measure.label(im_thresh_list[-1], background=0, connectivity=2))
+
+        # establish correspondence
+        if step &gt; 0:
+            comps_orig = np.copy(comps)
+            try:
+                comps = establish_correspondence(comps_list[-1], comps_orig)
+            except:
+                comps = comps_orig
+        # plt.imshow(comps)
+        # plt.show()
+
+        comp_tiles = {}  # stores tiles corresponding to each tile
+        if not method == &#39;cd&#39;:
+            comps_combined_tile = np.zeros(shape=im_orig.shape)  # stores all comp tiles combined
+        else:
+            comps_combined_tile = np.zeros(shape=(R, C))  # stores all comp tiles combined
+        comp_surround_tiles = {}  # stores tiles around comp_tiles
+        comp_surround_idxs = {}
+
+        # make tiles
+        comp_nums = np.unique(comps)
+        comp_nums = comp_nums[comp_nums &gt; 0]  # remove 0
+        for comp_num in comp_nums:
+            if comp_num &gt; 0:
+                # make component tile
+                comp_tile_downsampled = (comps == comp_num)
+                comp_tiles[comp_num] = tiling.gen_tile_from_comp(im_orig, comp_tile_downsampled,
+                                                                 sweep_dim, method)  # this is full size
+                comp_tile_binary = tiling.gen_tile_from_comp(im_orig, comp_tile_downsampled,
+                                                             sweep_dim, &#39;cd&#39;)  # this is full size
+                #             print(&#39;comps sizes&#39;, comps_combined_tile.shape, comp_tiles[comp_num].shape)
+                comps_combined_tile += comp_tiles[comp_num]
+
+                # generate tiles and corresponding idxs around component
+                comp_surround_tiles[comp_num], comp_surround_idxs[comp_num] = \
+                    tiling.gen_tiles_around_baseline(im_orig, comp_tile_binary, method=method, sweep_dim=sweep_dim)
+
+        # predict for all tiles
+        comp_scores_raw_dict = {}  # dictionary of {comp_num: comp_score}
+        for comp_num in comp_nums:
+            tiles = np.concatenate((np.expand_dims(comp_tiles[comp_num], 0),  # baseline tile at 0
+                                    np.expand_dims(comps_combined_tile, 0),  # combined tile at 1
+                                    comp_surround_tiles[comp_num]))  # all others afterwards
+            scores_raw = score_funcs.get_scores_2d(model, method, ims=tiles, im_torch=im_torch,
+                                                   pred_ims=pred_ims, model_type=model_type)
+
+            # decipher scores
+            score_comp = np.copy(refine_scores(scores_raw, lab_num)[0])
+            scores_tiles = np.copy(refine_scores(scores_raw, lab_num)[2:])
+
+            # store the predicted class scores
+            comp_scores_raw_dict[comp_num] = np.copy(scores_raw[0])
+            score_comps_raw_combined = np.copy(scores_raw[1])
+
+            # update pixel scores
+            tiles_idxs = comp_surround_idxs[comp_num]
+            for i in range(len(scores_tiles)):
+                (r, c) = tiles_idxs[i]
+                scores_track[r, c] = np.max(scores_tiles[i] - score_comp)  # todo: subtract off previous comp / weight?
+
+        # get class preds and thresholded image
+        scores_track[im_thresh_list[-1]] = np.nan
+        im_thresh = threshold_scores(scores_track, percentile_include, method)
+        im_thresh_smoothed = smooth_im_thresh(im_thresh_list[-1], im_thresh)
+
+        # add to lists
+        scores_list.append(np.copy(scores_track))
+        im_thresh_list.append(im_thresh_smoothed)
+        comps_list.append(comps)
+        comp_scores_raw_list.append(comp_scores_raw_dict)
+        comp_scores_raw_combined_list.append(score_comps_raw_combined)
+
+    # pad first image
+    comps_list = [np.zeros(im_orig.shape)] + comps_list
+
+    lists = {&#39;scores_list&#39;: scores_list,  # float arrs of scores tracked over time (NaN for already picked)
+             &#39;im_thresh_list&#39;: im_thresh_list,  # boolean array of selected pixels over time
+             &#39;comps_list&#39;: comps_list,  # numpy arrs (each component is a different number, 0 for background)
+             &#39;comp_scores_raw_list&#39;: comp_scores_raw_list,  # dicts, each key is a number corresponding to a component
+             &#39;comp_scores_raw_combined_list&#39;: comp_scores_raw_combined_list,
+             # arrs representing scores for all current comps combined
+             &#39;scores_orig_raw&#39;: scores_orig_raw,
+             &#39;num_before_final&#39;: len(im_thresh_list)}  # one arr with original scores of pixels
+    lists = agglomerate_final(lists, model, pred_ims, percentile_include, method, sweep_dim,
+                              im_orig, lab_num, num_iters=5, im_torch=im_torch, model_type=model_type)
+
+    return lists
+
+
+# agglomerate the final blobs
+def agglomerate_final(lists, model, pred_ims, percentile_include, method, sweep_dim,
+                      im_orig, lab_num, num_iters=5, im_torch=None, model_type=&#39;mnist&#39;):
+    # while multiple types of blobs
+    while (np.unique(lists[&#39;comps_list&#39;][-1]).size &gt; 2):
+        #     for q in range(3):
+        comps = np.copy(lists[&#39;comps_list&#39;][-1])
+        comp_scores_raw_dict = deepcopy(lists[&#39;comp_scores_raw_list&#39;][-1])
+
+        # todo: initially merge really small blobs with nearest big blobs
+        # if q == 0:
+
+        # make tiles by combining pairs in comps
+        comp_tiles = {}  # stores tiles corresponding to each tile
+        for comp_num in np.unique(comps):
+            if comp_num &gt; 0:
+                # make component tile
+                comp_tile_downsampled = (comps == comp_num)
+                comp_tiles[comp_num] = tiling.gen_tile_from_comp(im_orig, comp_tile_downsampled,
+                                                                 sweep_dim, method)  # this is full size
+
+        # make combined tiles
+        comp_tiles_comb = {}
+        for comp_num1 in np.unique(comps):
+            for comp_num2 in np.unique(comps):
+                if 0 &lt; comp_num1 &lt; comp_num2:
+                    comp_tiles_comb[(comp_num1, comp_num2)] = tiling.combine_tiles(comp_tiles[comp_num1],
+                                                                                   comp_tiles[comp_num2], method)
+
+        # predict for all tiles
+        comp_max_score_diff = -1e10
+        comp_max_key_pair = None
+        comp_max_scores_raw = None
+        for key in comp_tiles_comb.keys():
+            # calculate scores
+            tiles = 1.0 * np.expand_dims(comp_tiles_comb[key], 0)
+            scores_raw = score_funcs.get_scores_2d(model, method, ims=tiles, im_torch=im_torch,
+                                                   pred_ims=pred_ims, model_type=model_type)
+
+            # refine scores for correct class - todo this doesn&#39;t work with refine_scores
+            score_comp = np.copy(refine_scores(scores_raw, lab_num)[0])
+            #             score_orig = np.max(refine_scores(np.expand_dims(comp_scores_raw_dict[key[0]], 0), lab_num)[0],
+            #                                 refine_scores(np.expand_dims(comp_scores_raw_dict[key[1]], 0), lab_num)[0])
+            score_orig = max(comp_scores_raw_dict[key[0]][lab_num], comp_scores_raw_dict[key[1]][lab_num])
+            score_diff = score_comp - score_orig
+
+            # find best score
+            if score_diff &gt; comp_max_score_diff:
+                comp_max_score_diff = score_diff
+                comp_max_key_pair = key
+                comp_max_scores_raw = np.copy(scores_raw[0])  # store the predicted class scores
+
+        # merge highest scoring blob pair
+        comps[comps == comp_max_key_pair[1]] = comp_max_key_pair[0]
+
+        # update highest scoring blob pair score
+        comp_scores_raw_dict[comp_max_key_pair[0]] = comp_max_scores_raw
+        comp_scores_raw_dict.pop(comp_max_key_pair[1])
+
+        # add to lists
+        lists[&#39;comps_list&#39;].append(comps)
+        lists[&#39;comp_scores_raw_list&#39;].append(comp_scores_raw_dict)
+        lists[&#39;scores_list&#39;].append(lists[&#39;scores_list&#39;][-1])
+        lists[&#39;im_thresh_list&#39;].append(lists[&#39;im_thresh_list&#39;][-1])
+        lists[&#39;comp_scores_raw_combined_list&#39;].append(lists[&#39;comp_scores_raw_combined_list&#39;][-1])
+
+    return lists</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="acd.agglomeration.agg_2d.agglomerate"><code class="name flex">
+<span>def <span class="ident">agglomerate</span></span>(<span>model, pred_ims, percentile_include, method, sweep_dim, im_orig, lab_num, num_iters=5, im_torch=None, model_type='mnist', device='cuda')</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def agglomerate(model, pred_ims, percentile_include, method, sweep_dim,
+                im_orig, lab_num, num_iters=5, im_torch=None, model_type=&#39;mnist&#39;, device=&#39;cuda&#39;):
+    # set up shapes
+    R = im_orig.shape[0]
+    C = im_orig.shape[1]
+    size_downsampled = (ceil(R / sweep_dim), ceil(C / sweep_dim))  # effectively downsampled
+
+    # get scores
+    tiles = tiling.gen_tiles(im_orig, fill=0, method=method, sweep_dim=sweep_dim)
+    scores_orig_raw = score_funcs.get_scores_2d(model, method, ims=tiles, im_torch=im_torch,
+                                                pred_ims=pred_ims, model_type=model_type, device=device)
+    scores_track = np.copy(refine_scores(scores_orig_raw, lab_num)).reshape(
+        size_downsampled)  # keep track of these scores
+
+    # threshold im
+    im_thresh = threshold_scores(scores_track, percentile_include, method)
+
+    # initialize lists
+    scores_list = [np.copy(scores_track)]
+    im_thresh_list = [im_thresh]
+    comps_list = []
+    if not method == &#39;cd&#39;:
+        comp_scores_raw_list = [{0: score_funcs.get_scores_2d(model, &#39;build_up&#39;,
+                                                              ims=np.expand_dims(im_orig, 0),  # score for full image
+                                                              im_torch=im_torch, pred_ims=pred_ims,
+                                                              model_type=model_type, device=device)[0]}]
+    else:
+        comp_scores_raw_list = [{0: score_funcs.get_scores_2d(model, method,
+                                                              ims=np.expand_dims(np.ones(im_orig.transpose().shape), 0),
+                                                              # score for full image
+                                                              im_torch=im_torch, pred_ims=pred_ims,
+                                                              model_type=model_type, device=device)[0]}]
+    comp_scores_raw_combined_list = []
+
+    # iterate
+    for step in range(num_iters):
+        # if already selected all pixels then break
+        if np.sum(im_thresh_list[-1]) == R * C:
+            break
+
+        # find connected components for regions
+        comps = np.copy(measure.label(im_thresh_list[-1], background=0, connectivity=2))
+
+        # establish correspondence
+        if step &gt; 0:
+            comps_orig = np.copy(comps)
+            try:
+                comps = establish_correspondence(comps_list[-1], comps_orig)
+            except:
+                comps = comps_orig
+        # plt.imshow(comps)
+        # plt.show()
+
+        comp_tiles = {}  # stores tiles corresponding to each tile
+        if not method == &#39;cd&#39;:
+            comps_combined_tile = np.zeros(shape=im_orig.shape)  # stores all comp tiles combined
+        else:
+            comps_combined_tile = np.zeros(shape=(R, C))  # stores all comp tiles combined
+        comp_surround_tiles = {}  # stores tiles around comp_tiles
+        comp_surround_idxs = {}
+
+        # make tiles
+        comp_nums = np.unique(comps)
+        comp_nums = comp_nums[comp_nums &gt; 0]  # remove 0
+        for comp_num in comp_nums:
+            if comp_num &gt; 0:
+                # make component tile
+                comp_tile_downsampled = (comps == comp_num)
+                comp_tiles[comp_num] = tiling.gen_tile_from_comp(im_orig, comp_tile_downsampled,
+                                                                 sweep_dim, method)  # this is full size
+                comp_tile_binary = tiling.gen_tile_from_comp(im_orig, comp_tile_downsampled,
+                                                             sweep_dim, &#39;cd&#39;)  # this is full size
+                #             print(&#39;comps sizes&#39;, comps_combined_tile.shape, comp_tiles[comp_num].shape)
+                comps_combined_tile += comp_tiles[comp_num]
+
+                # generate tiles and corresponding idxs around component
+                comp_surround_tiles[comp_num], comp_surround_idxs[comp_num] = \
+                    tiling.gen_tiles_around_baseline(im_orig, comp_tile_binary, method=method, sweep_dim=sweep_dim)
+
+        # predict for all tiles
+        comp_scores_raw_dict = {}  # dictionary of {comp_num: comp_score}
+        for comp_num in comp_nums:
+            tiles = np.concatenate((np.expand_dims(comp_tiles[comp_num], 0),  # baseline tile at 0
+                                    np.expand_dims(comps_combined_tile, 0),  # combined tile at 1
+                                    comp_surround_tiles[comp_num]))  # all others afterwards
+            scores_raw = score_funcs.get_scores_2d(model, method, ims=tiles, im_torch=im_torch,
+                                                   pred_ims=pred_ims, model_type=model_type)
+
+            # decipher scores
+            score_comp = np.copy(refine_scores(scores_raw, lab_num)[0])
+            scores_tiles = np.copy(refine_scores(scores_raw, lab_num)[2:])
+
+            # store the predicted class scores
+            comp_scores_raw_dict[comp_num] = np.copy(scores_raw[0])
+            score_comps_raw_combined = np.copy(scores_raw[1])
+
+            # update pixel scores
+            tiles_idxs = comp_surround_idxs[comp_num]
+            for i in range(len(scores_tiles)):
+                (r, c) = tiles_idxs[i]
+                scores_track[r, c] = np.max(scores_tiles[i] - score_comp)  # todo: subtract off previous comp / weight?
+
+        # get class preds and thresholded image
+        scores_track[im_thresh_list[-1]] = np.nan
+        im_thresh = threshold_scores(scores_track, percentile_include, method)
+        im_thresh_smoothed = smooth_im_thresh(im_thresh_list[-1], im_thresh)
+
+        # add to lists
+        scores_list.append(np.copy(scores_track))
+        im_thresh_list.append(im_thresh_smoothed)
+        comps_list.append(comps)
+        comp_scores_raw_list.append(comp_scores_raw_dict)
+        comp_scores_raw_combined_list.append(score_comps_raw_combined)
+
+    # pad first image
+    comps_list = [np.zeros(im_orig.shape)] + comps_list
+
+    lists = {&#39;scores_list&#39;: scores_list,  # float arrs of scores tracked over time (NaN for already picked)
+             &#39;im_thresh_list&#39;: im_thresh_list,  # boolean array of selected pixels over time
+             &#39;comps_list&#39;: comps_list,  # numpy arrs (each component is a different number, 0 for background)
+             &#39;comp_scores_raw_list&#39;: comp_scores_raw_list,  # dicts, each key is a number corresponding to a component
+             &#39;comp_scores_raw_combined_list&#39;: comp_scores_raw_combined_list,
+             # arrs representing scores for all current comps combined
+             &#39;scores_orig_raw&#39;: scores_orig_raw,
+             &#39;num_before_final&#39;: len(im_thresh_list)}  # one arr with original scores of pixels
+    lists = agglomerate_final(lists, model, pred_ims, percentile_include, method, sweep_dim,
+                              im_orig, lab_num, num_iters=5, im_torch=im_torch, model_type=model_type)
+
+    return lists</code></pre>
+</details>
+</dd>
+<dt id="acd.agglomeration.agg_2d.agglomerate_final"><code class="name flex">
+<span>def <span class="ident">agglomerate_final</span></span>(<span>lists, model, pred_ims, percentile_include, method, sweep_dim, im_orig, lab_num, num_iters=5, im_torch=None, model_type='mnist')</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def agglomerate_final(lists, model, pred_ims, percentile_include, method, sweep_dim,
+                      im_orig, lab_num, num_iters=5, im_torch=None, model_type=&#39;mnist&#39;):
+    # while multiple types of blobs
+    while (np.unique(lists[&#39;comps_list&#39;][-1]).size &gt; 2):
+        #     for q in range(3):
+        comps = np.copy(lists[&#39;comps_list&#39;][-1])
+        comp_scores_raw_dict = deepcopy(lists[&#39;comp_scores_raw_list&#39;][-1])
+
+        # todo: initially merge really small blobs with nearest big blobs
+        # if q == 0:
+
+        # make tiles by combining pairs in comps
+        comp_tiles = {}  # stores tiles corresponding to each tile
+        for comp_num in np.unique(comps):
+            if comp_num &gt; 0:
+                # make component tile
+                comp_tile_downsampled = (comps == comp_num)
+                comp_tiles[comp_num] = tiling.gen_tile_from_comp(im_orig, comp_tile_downsampled,
+                                                                 sweep_dim, method)  # this is full size
+
+        # make combined tiles
+        comp_tiles_comb = {}
+        for comp_num1 in np.unique(comps):
+            for comp_num2 in np.unique(comps):
+                if 0 &lt; comp_num1 &lt; comp_num2:
+                    comp_tiles_comb[(comp_num1, comp_num2)] = tiling.combine_tiles(comp_tiles[comp_num1],
+                                                                                   comp_tiles[comp_num2], method)
+
+        # predict for all tiles
+        comp_max_score_diff = -1e10
+        comp_max_key_pair = None
+        comp_max_scores_raw = None
+        for key in comp_tiles_comb.keys():
+            # calculate scores
+            tiles = 1.0 * np.expand_dims(comp_tiles_comb[key], 0)
+            scores_raw = score_funcs.get_scores_2d(model, method, ims=tiles, im_torch=im_torch,
+                                                   pred_ims=pred_ims, model_type=model_type)
+
+            # refine scores for correct class - todo this doesn&#39;t work with refine_scores
+            score_comp = np.copy(refine_scores(scores_raw, lab_num)[0])
+            #             score_orig = np.max(refine_scores(np.expand_dims(comp_scores_raw_dict[key[0]], 0), lab_num)[0],
+            #                                 refine_scores(np.expand_dims(comp_scores_raw_dict[key[1]], 0), lab_num)[0])
+            score_orig = max(comp_scores_raw_dict[key[0]][lab_num], comp_scores_raw_dict[key[1]][lab_num])
+            score_diff = score_comp - score_orig
+
+            # find best score
+            if score_diff &gt; comp_max_score_diff:
+                comp_max_score_diff = score_diff
+                comp_max_key_pair = key
+                comp_max_scores_raw = np.copy(scores_raw[0])  # store the predicted class scores
+
+        # merge highest scoring blob pair
+        comps[comps == comp_max_key_pair[1]] = comp_max_key_pair[0]
+
+        # update highest scoring blob pair score
+        comp_scores_raw_dict[comp_max_key_pair[0]] = comp_max_scores_raw
+        comp_scores_raw_dict.pop(comp_max_key_pair[1])
+
+        # add to lists
+        lists[&#39;comps_list&#39;].append(comps)
+        lists[&#39;comp_scores_raw_list&#39;].append(comp_scores_raw_dict)
+        lists[&#39;scores_list&#39;].append(lists[&#39;scores_list&#39;][-1])
+        lists[&#39;im_thresh_list&#39;].append(lists[&#39;im_thresh_list&#39;][-1])
+        lists[&#39;comp_scores_raw_combined_list&#39;].append(lists[&#39;comp_scores_raw_combined_list&#39;][-1])
+
+    return lists</code></pre>
+</details>
+</dd>
+<dt id="acd.agglomeration.agg_2d.establish_correspondence"><code class="name flex">
+<span>def <span class="ident">establish_correspondence</span></span>(<span>seg1, seg2)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def establish_correspondence(seg1, seg2):
+    seg_out = np.zeros(seg1.shape, dtype=&#39;int64&#39;)
+    new_counter = 0
+
+    num_segs = int(np.max(seg2))
+    remaining = list(range(1, 12))  # only have 10 colors though
+    for i in range(1, num_segs + 1):
+        seg = seg2 == i
+        old_seg = seg1[seg]
+        matches = np.unique(old_seg[old_seg != 0])
+        num_matches = matches.size
+
+        # new seg
+        if num_matches == 0:
+            new_counter -= 1
+            seg_out[seg] = new_counter
+
+        # 1 match
+        elif num_matches == 1:
+            seg_out[seg] = matches[0]
+            remaining.remove(matches[0])
+
+        # &gt;1 matches (segs merged)
+        else:
+            seg_out[seg] = min(matches)
+            remaining.remove(min(matches))
+
+    # assign new segs    
+    while new_counter &lt; 0:
+        seg_out[seg_out == new_counter] = min(remaining)
+        remaining.remove(min(remaining))
+        new_counter += 1
+
+    return seg_out  # seg2</code></pre>
+</details>
+</dd>
+<dt id="acd.agglomeration.agg_2d.refine_scores"><code class="name flex">
+<span>def <span class="ident">refine_scores</span></span>(<span>scores, lab_num)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def refine_scores(scores, lab_num):
+    return scores[:, lab_num]</code></pre>
+</details>
+</dd>
+<dt id="acd.agglomeration.agg_2d.smooth_im_thresh"><code class="name flex">
+<span>def <span class="ident">smooth_im_thresh</span></span>(<span>im_thresh_old, im_thresh)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def smooth_im_thresh(im_thresh_old, im_thresh):
+    im = im_thresh_old + im_thresh
+    im_count_neighbors = convolve2d(im, filt, mode=&#39;same&#39;)
+    pixels_to_add = np.logical_and(np.logical_not(im), im_count_neighbors &gt;= 3)
+    return im + pixels_to_add</code></pre>
+</details>
+</dd>
+<dt id="acd.agglomeration.agg_2d.threshold_scores"><code class="name flex">
+<span>def <span class="ident">threshold_scores</span></span>(<span>scores, percentile_include, method)</span>
+</code></dt>
+<dd>
+<section class="desc"></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def threshold_scores(scores, percentile_include, method):
+    X = scores
+
+    # pick more when more is already picked
+    num_picked = np.sum(np.isnan(scores))
+    if num_picked &gt; scores.size / 3:
+        percentile_include -= 15
+
+    thresh = np.nanpercentile(X, percentile_include)
+    #     thresh = np.max(X) # pick only 1 pixel at a time
+    im_thresh = np.logical_and(scores &gt;= thresh, ~np.isnan(scores))
+    # scores &gt;= thresh #np.logical_and(scores &gt;= thresh, scores != 0)
+
+    # make sure we pick something
+    while np.sum(im_thresh) == 0:
+        percentile_include -= 4
+        thresh = np.nanpercentile(X, percentile_include)
+        #     thresh = np.max(X) # pick only 1 pixel at a time
+        im_thresh = np.logical_and(scores &gt;= thresh, ~np.isnan(scores))
+        # np.logical_and(scores &gt;= thresh, scores != 0)
+    return im_thresh</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="acd.agglomeration" href="index.html">acd.agglomeration</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="acd.agglomeration.agg_2d.agglomerate" href="#acd.agglomeration.agg_2d.agglomerate">agglomerate</a></code></li>
+<li><code><a title="acd.agglomeration.agg_2d.agglomerate_final" href="#acd.agglomeration.agg_2d.agglomerate_final">agglomerate_final</a></code></li>
+<li><code><a title="acd.agglomeration.agg_2d.establish_correspondence" href="#acd.agglomeration.agg_2d.establish_correspondence">establish_correspondence</a></code></li>
+<li><code><a title="acd.agglomeration.agg_2d.refine_scores" href="#acd.agglomeration.agg_2d.refine_scores">refine_scores</a></code></li>
+<li><code><a title="acd.agglomeration.agg_2d.smooth_im_thresh" href="#acd.agglomeration.agg_2d.smooth_im_thresh">smooth_im_thresh</a></code></li>
+<li><code><a title="acd.agglomeration.agg_2d.threshold_scores" href="#acd.agglomeration.agg_2d.threshold_scores">threshold_scores</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.7.2</a>.</p>
+</footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad()</script>
+</body>
+</html>

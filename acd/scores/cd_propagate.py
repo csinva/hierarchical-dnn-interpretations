@@ -5,7 +5,6 @@ import numpy as np
 from scipy.special import expit as sigmoid
 
 
-
 # propagate convolutional or linear layer
 def propagate_conv_linear(relevant, irrelevant, module, device='cuda'):
     bias = module(torch.zeros(irrelevant.size()).to(device))
@@ -19,6 +18,20 @@ def propagate_conv_linear(relevant, irrelevant, module, device='cuda'):
     prop_rel = torch.div(prop_rel, prop_sum)
     prop_irrel = torch.div(prop_irrel, prop_sum)
     return rel + torch.mul(prop_rel, bias), irrel + torch.mul(prop_irrel, bias)
+
+# propagate batchnorm2d operation
+def propagate_batchnorm2d(relevant, irrelevant, module, device='cuda'):
+    bias = module(torch.zeros(irrelevant.size()).to(device))
+    rel = module(relevant) - bias
+    irrel = module(irrelevant) - bias
+    prop_rel = torch.abs(rel)
+    prop_irrel = torch.abs(irrel)
+    prop_sum = prop_rel + prop_irrel
+    prop_rel = torch.div(prop_rel, prop_sum)
+    prop_rel[torch.isnan(prop_rel)] = 0
+    rel = rel + torch.mul(prop_rel, bias)
+    irrel = module(relevant + irrelevant) - rel
+    return rel, irrel
 
 def propagate_pooling(relevant, irrelevant, pooler):
     '''propagate pooling operation
@@ -74,3 +87,37 @@ def propagate_tanh_two(a, b):
     '''propagate tanh nonlinearity
     '''
     return 0.5 * (np.tanh(a) + (np.tanh(a + b) - np.tanh(b))), 0.5 * (np.tanh(b) + (np.tanh(a + b) - np.tanh(a)))
+
+def propagate_basic_block(rel, irrel, module):
+    '''Propagate a BasicBlock (used in the ResNet architectures)
+    This is what the forward pass of the basic block looks like
+    identity = x
+
+    out = self.conv1(x) # 1
+    out = self.bn1(out) # 2
+    out = self.relu(out) # 3
+    out = self.conv2(out) # 4
+    out = self.bn2(out) # 5
+
+    if self.downsample is not None:
+        identity = self.downsample(x)
+
+    out += identity
+    out = self.relu(out)
+    '''
+    from .cd import cd_generic
+#     for mod in module.modules():
+#         print('\tm', mod)
+    rel_identity, irrel_identity = deepcopy(rel), deepcopy(irrel)
+    rel, irrel = cd_generic(list(module.modules())[1:6], rel, irrel)
+    
+    
+    if module.downsample is not None:
+        rel_identity, irrel_identity = cd_generic(module.downsample.modules(), rel_identity, irrel_identity)
+
+    
+    rel += rel_identity
+    irrel += irrel_identity
+    rel, irrel = propagate_relu(rel, irrel, module.relu)  
+    
+    return rel, irrel

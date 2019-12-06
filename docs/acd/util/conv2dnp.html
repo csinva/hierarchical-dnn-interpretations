@@ -1,0 +1,878 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
+<meta name="generator" content="pdoc 0.7.2" />
+<title>acd.util.conv2dnp API documentation</title>
+<meta name="description" content="" />
+<link href='https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.0/normalize.min.css' rel='stylesheet'>
+<link href='https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/8.0.0/sanitize.min.css' rel='stylesheet'>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/github.min.css" rel="stylesheet">
+<style>.flex{display:flex !important}body{line-height:1.5em}#content{padding:20px}#sidebar{padding:30px;overflow:hidden}.http-server-breadcrumbs{font-size:130%;margin:0 0 15px 0}#footer{font-size:.75em;padding:5px 30px;border-top:1px solid #ddd;text-align:right}#footer p{margin:0 0 0 1em;display:inline-block}#footer p:last-child{margin-right:30px}h1,h2,h3,h4,h5{font-weight:300}h1{font-size:2.5em;line-height:1.1em}h2{font-size:1.75em;margin:1em 0 .50em 0}h3{font-size:1.4em;margin:25px 0 10px 0}h4{margin:0;font-size:105%}a{color:#058;text-decoration:none;transition:color .3s ease-in-out}a:hover{color:#e82}.title code{font-weight:bold}h2[id^="header-"]{margin-top:2em}.ident{color:#900}pre code{background:#f8f8f8;font-size:.8em;line-height:1.4em}code{background:#f2f2f1;padding:1px 4px;overflow-wrap:break-word}h1 code{background:transparent}pre{background:#f8f8f8;border:0;border-top:1px solid #ccc;border-bottom:1px solid #ccc;margin:1em 0;padding:1ex}#http-server-module-list{display:flex;flex-flow:column}#http-server-module-list div{display:flex}#http-server-module-list dt{min-width:10%}#http-server-module-list p{margin-top:0}.toc ul,#index{list-style-type:none;margin:0;padding:0}#index code{background:transparent}#index h3{border-bottom:1px solid #ddd}#index ul{padding:0}#index h4{font-weight:bold}#index h4 + ul{margin-bottom:.6em}@media (min-width:200ex){#index .two-column{column-count:2}}@media (min-width:300ex){#index .two-column{column-count:3}}dl{margin-bottom:2em}dl dl:last-child{margin-bottom:4em}dd{margin:0 0 1em 3em}#header-classes + dl > dd{margin-bottom:3em}dd dd{margin-left:2em}dd p{margin:10px 0}.name{background:#eee;font-weight:bold;font-size:.85em;padding:5px 10px;display:inline-block;min-width:40%}.name:hover{background:#e0e0e0}.name > span:first-child{white-space:nowrap}.name.class > span:nth-child(2){margin-left:.4em}.inherited{color:#999;border-left:5px solid #eee;padding-left:1em}.inheritance em{font-style:normal;font-weight:bold}.desc h2{font-weight:400;font-size:1.25em}.desc h3{font-size:1em}.desc dt code{background:inherit}.source summary,.git-link-div{color:#666;text-align:right;font-weight:400;font-size:.8em;text-transform:uppercase}.source summary > *{white-space:nowrap;cursor:pointer}.git-link{color:inherit;margin-left:1em}.source pre{max-height:500px;overflow:auto;margin:0}.source pre code{font-size:12px;overflow:visible}.hlist{list-style:none}.hlist li{display:inline}.hlist li:after{content:',\2002'}.hlist li:last-child:after{content:none}.hlist .hlist{display:inline;padding-left:1em}img{max-width:100%}.admonition{padding:.1em .5em;margin-bottom:1em}.admonition-title{font-weight:bold}.admonition.note,.admonition.info,.admonition.important{background:#aef}.admonition.todo,.admonition.versionadded,.admonition.tip,.admonition.hint{background:#dfd}.admonition.warning,.admonition.versionchanged,.admonition.deprecated{background:#fd4}.admonition.error,.admonition.danger,.admonition.caution{background:lightpink}</style>
+<style media="screen and (min-width: 700px)">@media screen and (min-width:700px){#sidebar{width:30%}#content{width:70%;max-width:100ch;padding:3em 4em;border-left:1px solid #ddd}pre code{font-size:1em}.item .name{font-size:1em}main{display:flex;flex-direction:row-reverse;justify-content:flex-end}.toc ul ul,#index ul{padding-left:1.5em}.toc > ul > li{margin-top:.5em}}</style>
+<style media="print">@media print{#sidebar h1{page-break-before:always}.source{display:none}}@media print{*{background:transparent !important;color:#000 !important;box-shadow:none !important;text-shadow:none !important}a[href]:after{content:" (" attr(href) ")";font-size:90%}a[href][title]:after{content:none}abbr[title]:after{content:" (" attr(title) ")"}.ir a:after,a[href^="javascript:"]:after,a[href^="#"]:after{content:""}pre,blockquote{border:1px solid #999;page-break-inside:avoid}thead{display:table-header-group}tr,img{page-break-inside:avoid}img{max-width:100% !important}@page{margin:0.5cm}p,h2,h3{orphans:3;widows:3}h1,h2,h3,h4,h5,h6{page-break-after:avoid}}</style>
+</head>
+<body>
+<main>
+<article id="content">
+<header>
+<h1 class="title">Module <code>acd.util.conv2dnp</code></h1>
+</header>
+<section id="section-intro">
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python"># code from https://github.com/renmengye/np-conv2d
+
+from __future__ import division
+
+import numpy as np
+
+
+def calc_pad(pad, in_siz, out_siz, stride, ksize):
+    &#34;&#34;&#34;Calculate padding width.
+
+    Args:
+        pad: padding method, &#34;SAME&#34;, &#34;VALID&#34;, or manually speicified.
+        ksize: kernel size [I, J].
+
+    Returns:
+        pad_: Actual padding width.
+    &#34;&#34;&#34;
+    if pad == &#39;SAME&#39;:
+        return (out_siz - 1) * stride + ksize - in_siz
+    elif pad == &#39;VALID&#39;:
+        return 0
+    else:
+        return pad
+
+
+def calc_size(h, kh, pad, sh):
+    &#34;&#34;&#34;Calculate output image size on one dimension.
+
+    Args:
+        h: input image size.
+        kh: kernel size.
+        pad: padding strategy.
+        sh: stride.
+
+    Returns:
+        s: output size.
+    &#34;&#34;&#34;
+
+    if pad == &#39;VALID&#39;:
+        return np.ceil((h - kh + 1) / sh)
+    elif pad == &#39;SAME&#39;:
+        return np.ceil(h / sh)
+    else:
+        return int(np.ceil((h - kh + pad + 1) / sh))
+
+
+def extract_sliding_windows_gradw(x,
+                                  ksize,
+                                  pad,
+                                  stride,
+                                  orig_size,
+                                  floor_first=True):
+    &#34;&#34;&#34;Extracts dilated windows.
+
+    Args:
+        x: [N, H, W, C]
+        k: [KH, KW]
+        pad: [PH, PW]
+        stride: [SH, SW]
+
+    Returns:
+        y: [N, H&#39;, W&#39;, KH, KW, C]
+    &#34;&#34;&#34;
+    n = x.shape[0]
+    h = x.shape[1]
+    w = x.shape[2]
+    c = x.shape[3]
+    kh = ksize[0]
+    kw = ksize[1]
+    sh = stride[0]
+    sw = stride[1]
+
+    h2 = orig_size[0]
+    w2 = orig_size[1]
+    ph = int(calc_pad(pad, h, h2, 1, ((kh - 1) * sh + 1)))
+    pw = int(calc_pad(pad, w, w2, 1, ((kw - 1) * sw + 1)))
+
+    ph2 = int(np.ceil(ph / 2))
+    ph3 = int(np.floor(ph / 2))
+    pw2 = int(np.ceil(pw / 2))
+    pw3 = int(np.floor(pw / 2))
+    if floor_first:
+        pph = (ph3, ph2)
+        ppw = (pw3, pw2)
+    else:
+        pph = (ph2, ph3)
+        ppw = (pw2, pw3)
+    x = np.pad(
+        x, ((0, 0), (ph3, ph2), (pw3, pw2), (0, 0)),
+        mode=&#39;constant&#39;,
+        constant_values=(0.0,))
+    p2h = (-x.shape[1]) % sh
+    p2w = (-x.shape[2]) % sw
+    if p2h &gt; 0 or p2w &gt; 0:
+        x = np.pad(
+            x, ((0, 0), (0, p2h), (0, p2w), (0, 0)),
+            mode=&#39;constant&#39;,
+            constant_values=(0.0,))
+    x = x.reshape([n, int(x.shape[1] / sh), sh, int(x.shape[2] / sw), sw, c])
+
+    y = np.zeros([n, h2, w2, kh, kw, c])
+    for ii in range(h2):
+        for jj in range(w2):
+            h0 = int(np.floor(ii / sh))
+            w0 = int(np.floor(jj / sw))
+            y[:, ii, jj, :, :, :] = x[:, h0:h0 + kh, ii % sh, w0:w0 + kw, jj %
+                                                                          sw, :]
+    return y
+
+
+def extract_sliding_windows_gradx(x,
+                                  ksize,
+                                  pad,
+                                  stride,
+                                  orig_size,
+                                  floor_first=False):
+    &#34;&#34;&#34;Extracts windows on a dilated image.
+
+    Args:
+        x: [N, H&#39;, W&#39;, C] (usually dy)
+        k: [KH, KW]
+        pad: [PH, PW]
+        stride: [SH, SW]
+        orig_size: [H, W]
+
+    Returns:
+        y: [N, H, W, KH, KW, C]
+    &#34;&#34;&#34;
+    n = x.shape[0]
+    h = x.shape[1]
+    w = x.shape[2]
+    c = x.shape[3]
+    kh = ksize[0]
+    kw = ksize[1]
+    ph = pad[0]
+    pw = pad[1]
+    sh = stride[0]
+    sw = stride[1]
+    h2 = orig_size[0]
+    w2 = orig_size[1]
+    xs = np.zeros([n, x.shape[1], sh, x.shape[2], sw, c])
+    xs[:, :, 0, :, 0, :] = x
+    xss = xs.shape
+    x = xs.reshape([xss[0], xss[1] * xss[2], xss[3] * xss[4], xss[5]])
+    x = x[:, :h2, :w2, :]
+
+    ph2 = int(np.ceil(ph / 2))
+    ph3 = int(np.floor(ph / 2))
+    pw2 = int(np.ceil(pw / 2))
+    pw3 = int(np.floor(pw / 2))
+    if floor_first:
+        pph = (ph3, ph2)
+        ppw = (pw3, pw2)
+    else:
+        pph = (ph2, ph3)
+        ppw = (pw2, pw3)
+    x = np.pad(
+        x, ((0, 0), pph, ppw, (0, 0)),
+        mode=&#39;constant&#39;,
+        constant_values=(0.0,))
+    y = np.zeros([n, h2, w2, kh, kw, c])
+
+    for ii in range(h2):
+        for jj in range(w2):
+            y[:, ii, jj, :, :, :] = x[:, ii:ii + kh, jj:jj + kw, :]
+    return y
+
+
+def extract_sliding_windows(x, ksize, pad, stride, floor_first=True):
+    &#34;&#34;&#34;Converts a tensor to sliding windows.
+
+    Args:
+        x: [N, H, W, C]
+        k: [KH, KW]
+        pad: [PH, PW]
+        stride: [SH, SW]
+
+    Returns:
+        y: [N, (H-KH+PH+1)/SH, (W-KW+PW+1)/SW, KH * KW, C]
+    &#34;&#34;&#34;
+    n = x.shape[0]
+    h = x.shape[1]
+    w = x.shape[2]
+    c = x.shape[3]
+    kh = ksize[0]
+    kw = ksize[1]
+    sh = stride[0]
+    sw = stride[1]
+
+    h2 = int(calc_size(h, kh, pad, sh))
+    w2 = int(calc_size(w, kw, pad, sw))
+    ph = int(calc_pad(pad, h, h2, sh, kh))
+    pw = int(calc_pad(pad, w, w2, sw, kw))
+
+    ph0 = int(np.floor(ph / 2))
+    ph1 = int(np.ceil(ph / 2))
+    pw0 = int(np.floor(pw / 2))
+    pw1 = int(np.ceil(pw / 2))
+
+    if floor_first:
+        pph = (ph0, ph1)
+        ppw = (pw0, pw1)
+    else:
+        pph = (ph1, ph0)
+        ppw = (pw1, pw0)
+    x = np.pad(
+        x, ((0, 0), pph, ppw, (0, 0)),
+        mode=&#39;constant&#39;,
+        constant_values=(0.0,))
+
+    y = np.zeros([n, h2, w2, kh, kw, c])
+    for ii in range(h2):
+        for jj in range(w2):
+            xx = ii * sh
+            yy = jj * sw
+            y[:, ii, jj, :, :, :] = x[:, xx:xx + kh, yy:yy + kw, :]
+    return y
+
+
+def conv2dnp(x, w, pad=&#39;SAME&#39;, stride=(1, 1)):
+    &#34;&#34;&#34;2D convolution (technically speaking, correlation).
+
+    Args:
+        x: [N, H, W, C]
+        w: [I, J, C, K]
+        pad: [PH, PW]
+        stride: [SH, SW]
+
+    Returns:
+        y: [N, H&#39;, W&#39;, K]
+    &#34;&#34;&#34;
+    ksize = w.shape[:2]
+    x = extract_sliding_windows(x, ksize, pad, stride)
+    ws = w.shape
+    w = w.reshape([ws[0] * ws[1] * ws[2], ws[3]])
+    xs = x.shape
+    x = x.reshape([xs[0] * xs[1] * xs[2], -1])
+    y = x.dot(w)
+    y = y.reshape([xs[0], xs[1], xs[2], -1])
+    return y
+
+
+def conv2d_gradw(x, dy, ksize, pad=&#39;SAME&#39;, stride=(1, 1)):
+    &#34;&#34;&#34;2D convolution gradient wrt. filters.
+
+    Args:
+        dy: [N, H&#39;, W&#39;, K]
+        x: [N, H, W, C]
+        ksize: original w ksize [I, J].
+
+    Returns:
+        dw: [I, J, C, K]
+    &#34;&#34;&#34;
+    dy = np.transpose(dy, [1, 2, 0, 3])
+    x = np.transpose(x, [3, 1, 2, 0])
+    ksize2 = dy.shape[:2]
+    x = extract_sliding_windows_gradw(x, ksize2, pad, stride, ksize)
+    dys = dy.shape
+    dy = dy.reshape([dys[0] * dys[1] * dys[2], dys[3]])
+    xs = x.shape
+    x = x.reshape([xs[0] * xs[1] * xs[2], -1])
+    dw = x.dot(dy)
+    dw = dw.reshape([xs[0], xs[1], xs[2], -1])
+    dw = np.transpose(dw, [1, 2, 0, 3])
+    dw = dw[:ksize[0], :ksize[1], :, :]
+    return dw
+
+
+def conv2d_gradx(w, dy, xsize, pad=&#39;SAME&#39;, stride=(1, 1)):
+    &#34;&#34;&#34;2D convolution gradient wrt. input.
+
+    Args:
+        dy: [N, H&#39;, W&#39;, K]
+        w: [I, J, C, K]
+        xsize: Original image size, [H, W]
+
+    Returns:
+        dx: [N, H, W, C]
+    &#34;&#34;&#34;
+    ksize = w.shape[:2]
+
+    if pad == &#39;SAME&#39;:
+        dys = dy.shape[1:3]
+        pad2h = int(
+            calc_pad(&#39;SAME&#39;,
+                     max(dys[0], dys[0] * stride[0] - 1), xsize[0], 1, ksize[
+                         0]))
+        pad2w = int(
+            calc_pad(&#39;SAME&#39;,
+                     max(dys[0], dys[0] * stride[1] - 1), xsize[1], 1, ksize[
+                         1]))
+        pad2 = (pad2h, pad2w)
+    elif pad == &#39;VALID&#39;:
+        pad2 = (int(calc_pad(&#39;SAME&#39;, 0, 0, 1, ksize[0])),
+                int(calc_pad(&#39;SAME&#39;, 0, 0, 1, ksize[1])))
+        pad2 = (pad2[0] * 2, pad2[1] * 2)
+    else:
+        pad2 = pad
+    w = np.transpose(w, [0, 1, 3, 2])
+    ksize = w.shape[:2]
+    dx = extract_sliding_windows_gradx(dy, ksize, pad2, stride, xsize)
+    dxs = dx.shape
+    dx = dx.reshape([dxs[0] * dxs[1] * dxs[2], -1])
+    w = w[::-1, ::-1, :, :]
+    ws = w.shape
+    w = w.reshape([ws[0] * ws[1] * ws[2], ws[3]])
+    dx = dx.dot(w)
+    return dx.reshape([dxs[0], dxs[1], dxs[2], -1])</code></pre>
+</details>
+</section>
+<section>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
+<dl>
+<dt id="acd.util.conv2dnp.calc_pad"><code class="name flex">
+<span>def <span class="ident">calc_pad</span></span>(<span>pad, in_siz, out_siz, stride, ksize)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Calculate padding width.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>pad</code></strong></dt>
+<dd>padding method, "SAME", "VALID", or manually speicified.</dd>
+<dt><strong><code>ksize</code></strong></dt>
+<dd>kernel size [I, J].</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>pad_</code></strong></dt>
+<dd>Actual padding width.</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def calc_pad(pad, in_siz, out_siz, stride, ksize):
+    &#34;&#34;&#34;Calculate padding width.
+
+    Args:
+        pad: padding method, &#34;SAME&#34;, &#34;VALID&#34;, or manually speicified.
+        ksize: kernel size [I, J].
+
+    Returns:
+        pad_: Actual padding width.
+    &#34;&#34;&#34;
+    if pad == &#39;SAME&#39;:
+        return (out_siz - 1) * stride + ksize - in_siz
+    elif pad == &#39;VALID&#39;:
+        return 0
+    else:
+        return pad</code></pre>
+</details>
+</dd>
+<dt id="acd.util.conv2dnp.calc_size"><code class="name flex">
+<span>def <span class="ident">calc_size</span></span>(<span>h, kh, pad, sh)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Calculate output image size on one dimension.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>h</code></strong></dt>
+<dd>input image size.</dd>
+<dt><strong><code>kh</code></strong></dt>
+<dd>kernel size.</dd>
+<dt><strong><code>pad</code></strong></dt>
+<dd>padding strategy.</dd>
+<dt><strong><code>sh</code></strong></dt>
+<dd>stride.</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>s</code></strong></dt>
+<dd>output size.</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def calc_size(h, kh, pad, sh):
+    &#34;&#34;&#34;Calculate output image size on one dimension.
+
+    Args:
+        h: input image size.
+        kh: kernel size.
+        pad: padding strategy.
+        sh: stride.
+
+    Returns:
+        s: output size.
+    &#34;&#34;&#34;
+
+    if pad == &#39;VALID&#39;:
+        return np.ceil((h - kh + 1) / sh)
+    elif pad == &#39;SAME&#39;:
+        return np.ceil(h / sh)
+    else:
+        return int(np.ceil((h - kh + pad + 1) / sh))</code></pre>
+</details>
+</dd>
+<dt id="acd.util.conv2dnp.conv2d_gradw"><code class="name flex">
+<span>def <span class="ident">conv2d_gradw</span></span>(<span>x, dy, ksize, pad='SAME', stride=(1, 1))</span>
+</code></dt>
+<dd>
+<section class="desc"><p>2D convolution gradient wrt. filters.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>dy</code></strong></dt>
+<dd>[N, H', W', K]</dd>
+<dt><strong><code>x</code></strong></dt>
+<dd>[N, H, W, C]</dd>
+<dt><strong><code>ksize</code></strong></dt>
+<dd>original w ksize [I, J].</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>dw</code></strong></dt>
+<dd>[I, J, C, K]</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def conv2d_gradw(x, dy, ksize, pad=&#39;SAME&#39;, stride=(1, 1)):
+    &#34;&#34;&#34;2D convolution gradient wrt. filters.
+
+    Args:
+        dy: [N, H&#39;, W&#39;, K]
+        x: [N, H, W, C]
+        ksize: original w ksize [I, J].
+
+    Returns:
+        dw: [I, J, C, K]
+    &#34;&#34;&#34;
+    dy = np.transpose(dy, [1, 2, 0, 3])
+    x = np.transpose(x, [3, 1, 2, 0])
+    ksize2 = dy.shape[:2]
+    x = extract_sliding_windows_gradw(x, ksize2, pad, stride, ksize)
+    dys = dy.shape
+    dy = dy.reshape([dys[0] * dys[1] * dys[2], dys[3]])
+    xs = x.shape
+    x = x.reshape([xs[0] * xs[1] * xs[2], -1])
+    dw = x.dot(dy)
+    dw = dw.reshape([xs[0], xs[1], xs[2], -1])
+    dw = np.transpose(dw, [1, 2, 0, 3])
+    dw = dw[:ksize[0], :ksize[1], :, :]
+    return dw</code></pre>
+</details>
+</dd>
+<dt id="acd.util.conv2dnp.conv2d_gradx"><code class="name flex">
+<span>def <span class="ident">conv2d_gradx</span></span>(<span>w, dy, xsize, pad='SAME', stride=(1, 1))</span>
+</code></dt>
+<dd>
+<section class="desc"><p>2D convolution gradient wrt. input.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>dy</code></strong></dt>
+<dd>[N, H', W', K]</dd>
+<dt><strong><code>w</code></strong></dt>
+<dd>[I, J, C, K]</dd>
+<dt><strong><code>xsize</code></strong></dt>
+<dd>Original image size, [H, W]</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>dx</code></strong></dt>
+<dd>[N, H, W, C]</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def conv2d_gradx(w, dy, xsize, pad=&#39;SAME&#39;, stride=(1, 1)):
+    &#34;&#34;&#34;2D convolution gradient wrt. input.
+
+    Args:
+        dy: [N, H&#39;, W&#39;, K]
+        w: [I, J, C, K]
+        xsize: Original image size, [H, W]
+
+    Returns:
+        dx: [N, H, W, C]
+    &#34;&#34;&#34;
+    ksize = w.shape[:2]
+
+    if pad == &#39;SAME&#39;:
+        dys = dy.shape[1:3]
+        pad2h = int(
+            calc_pad(&#39;SAME&#39;,
+                     max(dys[0], dys[0] * stride[0] - 1), xsize[0], 1, ksize[
+                         0]))
+        pad2w = int(
+            calc_pad(&#39;SAME&#39;,
+                     max(dys[0], dys[0] * stride[1] - 1), xsize[1], 1, ksize[
+                         1]))
+        pad2 = (pad2h, pad2w)
+    elif pad == &#39;VALID&#39;:
+        pad2 = (int(calc_pad(&#39;SAME&#39;, 0, 0, 1, ksize[0])),
+                int(calc_pad(&#39;SAME&#39;, 0, 0, 1, ksize[1])))
+        pad2 = (pad2[0] * 2, pad2[1] * 2)
+    else:
+        pad2 = pad
+    w = np.transpose(w, [0, 1, 3, 2])
+    ksize = w.shape[:2]
+    dx = extract_sliding_windows_gradx(dy, ksize, pad2, stride, xsize)
+    dxs = dx.shape
+    dx = dx.reshape([dxs[0] * dxs[1] * dxs[2], -1])
+    w = w[::-1, ::-1, :, :]
+    ws = w.shape
+    w = w.reshape([ws[0] * ws[1] * ws[2], ws[3]])
+    dx = dx.dot(w)
+    return dx.reshape([dxs[0], dxs[1], dxs[2], -1])</code></pre>
+</details>
+</dd>
+<dt id="acd.util.conv2dnp.conv2dnp"><code class="name flex">
+<span>def <span class="ident">conv2dnp</span></span>(<span>x, w, pad='SAME', stride=(1, 1))</span>
+</code></dt>
+<dd>
+<section class="desc"><p>2D convolution (technically speaking, correlation).</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>x</code></strong></dt>
+<dd>[N, H, W, C]</dd>
+<dt><strong><code>w</code></strong></dt>
+<dd>[I, J, C, K]</dd>
+<dt><strong><code>pad</code></strong></dt>
+<dd>[PH, PW]</dd>
+<dt><strong><code>stride</code></strong></dt>
+<dd>[SH, SW]</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>y</code></strong></dt>
+<dd>[N, H', W', K]</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def conv2dnp(x, w, pad=&#39;SAME&#39;, stride=(1, 1)):
+    &#34;&#34;&#34;2D convolution (technically speaking, correlation).
+
+    Args:
+        x: [N, H, W, C]
+        w: [I, J, C, K]
+        pad: [PH, PW]
+        stride: [SH, SW]
+
+    Returns:
+        y: [N, H&#39;, W&#39;, K]
+    &#34;&#34;&#34;
+    ksize = w.shape[:2]
+    x = extract_sliding_windows(x, ksize, pad, stride)
+    ws = w.shape
+    w = w.reshape([ws[0] * ws[1] * ws[2], ws[3]])
+    xs = x.shape
+    x = x.reshape([xs[0] * xs[1] * xs[2], -1])
+    y = x.dot(w)
+    y = y.reshape([xs[0], xs[1], xs[2], -1])
+    return y</code></pre>
+</details>
+</dd>
+<dt id="acd.util.conv2dnp.extract_sliding_windows"><code class="name flex">
+<span>def <span class="ident">extract_sliding_windows</span></span>(<span>x, ksize, pad, stride, floor_first=True)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Converts a tensor to sliding windows.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>x</code></strong></dt>
+<dd>[N, H, W, C]</dd>
+<dt><strong><code>k</code></strong></dt>
+<dd>[KH, KW]</dd>
+<dt><strong><code>pad</code></strong></dt>
+<dd>[PH, PW]</dd>
+<dt><strong><code>stride</code></strong></dt>
+<dd>[SH, SW]</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>y</code></strong></dt>
+<dd>[N, (H-KH+PH+1)/SH, (W-KW+PW+1)/SW, KH * KW, C]</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def extract_sliding_windows(x, ksize, pad, stride, floor_first=True):
+    &#34;&#34;&#34;Converts a tensor to sliding windows.
+
+    Args:
+        x: [N, H, W, C]
+        k: [KH, KW]
+        pad: [PH, PW]
+        stride: [SH, SW]
+
+    Returns:
+        y: [N, (H-KH+PH+1)/SH, (W-KW+PW+1)/SW, KH * KW, C]
+    &#34;&#34;&#34;
+    n = x.shape[0]
+    h = x.shape[1]
+    w = x.shape[2]
+    c = x.shape[3]
+    kh = ksize[0]
+    kw = ksize[1]
+    sh = stride[0]
+    sw = stride[1]
+
+    h2 = int(calc_size(h, kh, pad, sh))
+    w2 = int(calc_size(w, kw, pad, sw))
+    ph = int(calc_pad(pad, h, h2, sh, kh))
+    pw = int(calc_pad(pad, w, w2, sw, kw))
+
+    ph0 = int(np.floor(ph / 2))
+    ph1 = int(np.ceil(ph / 2))
+    pw0 = int(np.floor(pw / 2))
+    pw1 = int(np.ceil(pw / 2))
+
+    if floor_first:
+        pph = (ph0, ph1)
+        ppw = (pw0, pw1)
+    else:
+        pph = (ph1, ph0)
+        ppw = (pw1, pw0)
+    x = np.pad(
+        x, ((0, 0), pph, ppw, (0, 0)),
+        mode=&#39;constant&#39;,
+        constant_values=(0.0,))
+
+    y = np.zeros([n, h2, w2, kh, kw, c])
+    for ii in range(h2):
+        for jj in range(w2):
+            xx = ii * sh
+            yy = jj * sw
+            y[:, ii, jj, :, :, :] = x[:, xx:xx + kh, yy:yy + kw, :]
+    return y</code></pre>
+</details>
+</dd>
+<dt id="acd.util.conv2dnp.extract_sliding_windows_gradw"><code class="name flex">
+<span>def <span class="ident">extract_sliding_windows_gradw</span></span>(<span>x, ksize, pad, stride, orig_size, floor_first=True)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Extracts dilated windows.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>x</code></strong></dt>
+<dd>[N, H, W, C]</dd>
+<dt><strong><code>k</code></strong></dt>
+<dd>[KH, KW]</dd>
+<dt><strong><code>pad</code></strong></dt>
+<dd>[PH, PW]</dd>
+<dt><strong><code>stride</code></strong></dt>
+<dd>[SH, SW]</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>y</code></strong></dt>
+<dd>[N, H', W', KH, KW, C]</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def extract_sliding_windows_gradw(x,
+                                  ksize,
+                                  pad,
+                                  stride,
+                                  orig_size,
+                                  floor_first=True):
+    &#34;&#34;&#34;Extracts dilated windows.
+
+    Args:
+        x: [N, H, W, C]
+        k: [KH, KW]
+        pad: [PH, PW]
+        stride: [SH, SW]
+
+    Returns:
+        y: [N, H&#39;, W&#39;, KH, KW, C]
+    &#34;&#34;&#34;
+    n = x.shape[0]
+    h = x.shape[1]
+    w = x.shape[2]
+    c = x.shape[3]
+    kh = ksize[0]
+    kw = ksize[1]
+    sh = stride[0]
+    sw = stride[1]
+
+    h2 = orig_size[0]
+    w2 = orig_size[1]
+    ph = int(calc_pad(pad, h, h2, 1, ((kh - 1) * sh + 1)))
+    pw = int(calc_pad(pad, w, w2, 1, ((kw - 1) * sw + 1)))
+
+    ph2 = int(np.ceil(ph / 2))
+    ph3 = int(np.floor(ph / 2))
+    pw2 = int(np.ceil(pw / 2))
+    pw3 = int(np.floor(pw / 2))
+    if floor_first:
+        pph = (ph3, ph2)
+        ppw = (pw3, pw2)
+    else:
+        pph = (ph2, ph3)
+        ppw = (pw2, pw3)
+    x = np.pad(
+        x, ((0, 0), (ph3, ph2), (pw3, pw2), (0, 0)),
+        mode=&#39;constant&#39;,
+        constant_values=(0.0,))
+    p2h = (-x.shape[1]) % sh
+    p2w = (-x.shape[2]) % sw
+    if p2h &gt; 0 or p2w &gt; 0:
+        x = np.pad(
+            x, ((0, 0), (0, p2h), (0, p2w), (0, 0)),
+            mode=&#39;constant&#39;,
+            constant_values=(0.0,))
+    x = x.reshape([n, int(x.shape[1] / sh), sh, int(x.shape[2] / sw), sw, c])
+
+    y = np.zeros([n, h2, w2, kh, kw, c])
+    for ii in range(h2):
+        for jj in range(w2):
+            h0 = int(np.floor(ii / sh))
+            w0 = int(np.floor(jj / sw))
+            y[:, ii, jj, :, :, :] = x[:, h0:h0 + kh, ii % sh, w0:w0 + kw, jj %
+                                                                          sw, :]
+    return y</code></pre>
+</details>
+</dd>
+<dt id="acd.util.conv2dnp.extract_sliding_windows_gradx"><code class="name flex">
+<span>def <span class="ident">extract_sliding_windows_gradx</span></span>(<span>x, ksize, pad, stride, orig_size, floor_first=False)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>Extracts windows on a dilated image.</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>x</code></strong></dt>
+<dd>[N, H', W', C] (usually dy)</dd>
+<dt><strong><code>k</code></strong></dt>
+<dd>[KH, KW]</dd>
+<dt><strong><code>pad</code></strong></dt>
+<dd>[PH, PW]</dd>
+<dt><strong><code>stride</code></strong></dt>
+<dd>[SH, SW]</dd>
+<dt><strong><code>orig_size</code></strong></dt>
+<dd>[H, W]</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>y</code></strong></dt>
+<dd>[N, H, W, KH, KW, C]</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def extract_sliding_windows_gradx(x,
+                                  ksize,
+                                  pad,
+                                  stride,
+                                  orig_size,
+                                  floor_first=False):
+    &#34;&#34;&#34;Extracts windows on a dilated image.
+
+    Args:
+        x: [N, H&#39;, W&#39;, C] (usually dy)
+        k: [KH, KW]
+        pad: [PH, PW]
+        stride: [SH, SW]
+        orig_size: [H, W]
+
+    Returns:
+        y: [N, H, W, KH, KW, C]
+    &#34;&#34;&#34;
+    n = x.shape[0]
+    h = x.shape[1]
+    w = x.shape[2]
+    c = x.shape[3]
+    kh = ksize[0]
+    kw = ksize[1]
+    ph = pad[0]
+    pw = pad[1]
+    sh = stride[0]
+    sw = stride[1]
+    h2 = orig_size[0]
+    w2 = orig_size[1]
+    xs = np.zeros([n, x.shape[1], sh, x.shape[2], sw, c])
+    xs[:, :, 0, :, 0, :] = x
+    xss = xs.shape
+    x = xs.reshape([xss[0], xss[1] * xss[2], xss[3] * xss[4], xss[5]])
+    x = x[:, :h2, :w2, :]
+
+    ph2 = int(np.ceil(ph / 2))
+    ph3 = int(np.floor(ph / 2))
+    pw2 = int(np.ceil(pw / 2))
+    pw3 = int(np.floor(pw / 2))
+    if floor_first:
+        pph = (ph3, ph2)
+        ppw = (pw3, pw2)
+    else:
+        pph = (ph2, ph3)
+        ppw = (pw2, pw3)
+    x = np.pad(
+        x, ((0, 0), pph, ppw, (0, 0)),
+        mode=&#39;constant&#39;,
+        constant_values=(0.0,))
+    y = np.zeros([n, h2, w2, kh, kw, c])
+
+    for ii in range(h2):
+        for jj in range(w2):
+            y[:, ii, jj, :, :, :] = x[:, ii:ii + kh, jj:jj + kw, :]
+    return y</code></pre>
+</details>
+</dd>
+</dl>
+</section>
+<section>
+</section>
+</article>
+<nav id="sidebar">
+<h1>Index</h1>
+<div class="toc">
+<ul></ul>
+</div>
+<ul id="index">
+<li><h3>Super-module</h3>
+<ul>
+<li><code><a title="acd.util" href="index.html">acd.util</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="acd.util.conv2dnp.calc_pad" href="#acd.util.conv2dnp.calc_pad">calc_pad</a></code></li>
+<li><code><a title="acd.util.conv2dnp.calc_size" href="#acd.util.conv2dnp.calc_size">calc_size</a></code></li>
+<li><code><a title="acd.util.conv2dnp.conv2d_gradw" href="#acd.util.conv2dnp.conv2d_gradw">conv2d_gradw</a></code></li>
+<li><code><a title="acd.util.conv2dnp.conv2d_gradx" href="#acd.util.conv2dnp.conv2d_gradx">conv2d_gradx</a></code></li>
+<li><code><a title="acd.util.conv2dnp.conv2dnp" href="#acd.util.conv2dnp.conv2dnp">conv2dnp</a></code></li>
+<li><code><a title="acd.util.conv2dnp.extract_sliding_windows" href="#acd.util.conv2dnp.extract_sliding_windows">extract_sliding_windows</a></code></li>
+<li><code><a title="acd.util.conv2dnp.extract_sliding_windows_gradw" href="#acd.util.conv2dnp.extract_sliding_windows_gradw">extract_sliding_windows_gradw</a></code></li>
+<li><code><a title="acd.util.conv2dnp.extract_sliding_windows_gradx" href="#acd.util.conv2dnp.extract_sliding_windows_gradx">extract_sliding_windows_gradx</a></code></li>
+</ul>
+</li>
+</ul>
+</nav>
+</main>
+<footer id="footer">
+<p>Generated by <a href="https://pdoc3.github.io/pdoc"><cite>pdoc</cite> 0.7.2</a>.</p>
+</footer>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/highlight.min.js"></script>
+<script>hljs.initHighlightingOnLoad()</script>
+</body>
+</html>
