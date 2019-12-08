@@ -10,6 +10,7 @@ def cd_propagate_resnet(rel, irrel, model):
     # each BasicBlock passes its input through to its output (might need to downsample)
     # note: the bigger resnets use BottleNeck instead of BasicBlock
     mods = list(model.modules())
+    from .cd import cd_generic
     '''
     # mods[1:5]
     x = self.conv1(x)
@@ -32,21 +33,15 @@ def cd_propagate_resnet(rel, irrel, model):
 
     lay_nums = [5, 18, 34, 50]
     for lay_num in lay_nums:
-#         print(mods[lay_num])
         for basic_block in mods[lay_num]:
-#             print('in shape', rel.shape, irrel.shape)
-#             print(basic_block)            
             rel, irrel = propagate_basic_block(rel, irrel, basic_block)
-#             print('out shape', rel.shape, irrel.shape)
     
     # this is written super hacky
-#     print('before avgpool')
     rel = rel.mean(axis=-1)
     irrel = irrel.mean(axis=-1)
     
     rel = rel.mean(axis=-1)
     irrel = irrel.mean(axis=-1)
-    
 #     rel, irrel = cd_generic(mods[-2:-1], rel, irrel)
 #     print('after avgpool')
     
