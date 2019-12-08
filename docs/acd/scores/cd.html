@@ -89,6 +89,9 @@ def cd(im_torch: torch.Tensor, model, mask=None, model_type=None, device=&#39;cu
     return relevant, irrelevant
 
 def cd_generic(mods, relevant, irrelevant):
+    &#39;&#39;&#39;Helper function for cd which loops over modules and propagates them 
+    based on the layer name
+    &#39;&#39;&#39;
     for i, mod in enumerate(mods):
         t = str(type(mod))
         if &#39;Conv2d&#39; in t:
@@ -304,12 +307,16 @@ only used if mask is not passed</dd>
 <span>def <span class="ident">cd_generic</span></span>(<span>mods, relevant, irrelevant)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Helper function for cd which loops over modules and propagates them
+based on the layer name</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def cd_generic(mods, relevant, irrelevant):
+    &#39;&#39;&#39;Helper function for cd which loops over modules and propagates them 
+    based on the layer name
+    &#39;&#39;&#39;
     for i, mod in enumerate(mods):
         t = str(type(mod))
         if &#39;Conv2d&#39; in t:

@@ -63,6 +63,9 @@ def cd(im_torch: torch.Tensor, model, mask=None, model_type=None, device='cuda',
     return relevant, irrelevant
 
 def cd_generic(mods, relevant, irrelevant):
+    '''Helper function for cd which loops over modules and propagates them 
+    based on the layer name
+    '''
     for i, mod in enumerate(mods):
         t = str(type(mod))
         if 'Conv2d' in t:

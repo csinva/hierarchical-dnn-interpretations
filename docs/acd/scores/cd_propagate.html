@@ -31,8 +31,11 @@ import numpy as np
 from scipy.special import expit as sigmoid
 
 
-# propagate convolutional or linear layer
 def propagate_conv_linear(relevant, irrelevant, module, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;Propagate convolutional or linear layer
+    Apply linear part to both pieces
+    Split bias based on the ratio of the absolute sums
+    &#39;&#39;&#39;
     bias = module(torch.zeros(irrelevant.size()).to(device))
     rel = module(relevant) - bias
     irrel = module(irrelevant) - bias
@@ -45,8 +48,10 @@ def propagate_conv_linear(relevant, irrelevant, module, device=&#39;cuda&#39;):
     prop_irrel = torch.div(prop_irrel, prop_sum)
     return rel + torch.mul(prop_rel, bias), irrel + torch.mul(prop_irrel, bias)
 
-# propagate batchnorm2d operation
+
 def propagate_batchnorm2d(relevant, irrelevant, module, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;Propagate batchnorm2d operation
+    &#39;&#39;&#39;
     bias = module(torch.zeros(irrelevant.size()).to(device))
     rel = module(relevant) - bias
     irrel = module(irrelevant) - bias
@@ -69,7 +74,7 @@ def propagate_pooling(relevant, irrelevant, pooler):
     
     # pooling function
     def unpool(tensor, indices):
-        &#39;&#39;&#39;unpool tensor given indices for pooling
+        &#39;&#39;&#39;Unpool tensor given indices for pooling
         &#39;&#39;&#39;
         batch_size, in_channels, H, W = indices.shape
         output = torch.ones_like(indices, dtype=torch.float)
@@ -81,8 +86,10 @@ def propagate_pooling(relevant, irrelevant, pooler):
     rel, irrel = unpool(relevant, both_ind), unpool(irrelevant, both_ind)
     return rel, irrel
 
-# propagate ReLu nonlinearity
+
 def propagate_relu(relevant, irrelevant, activation, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;propagate ReLu nonlinearity
+    &#39;&#39;&#39;
     swap_inplace = False
     try:  # handles inplace
         if activation.inplace:
@@ -98,12 +105,16 @@ def propagate_relu(relevant, irrelevant, activation, device=&#39;cuda&#39;):
     return rel_score, irrel_score
 
 
-# propagate dropout operation
 def propagate_dropout(relevant, irrelevant, dropout):
+    &#39;&#39;&#39;propagate dropout operation
+    just applies dropout to each piece separately
+    &#39;&#39;&#39;
     return dropout(relevant), dropout(irrelevant)
 
-# propagate a three-part
+
 def propagate_three(a, b, c, activation):
+    &#39;&#39;&#39;Propagate a three-part nonlinearity
+    &#39;&#39;&#39;
     a_contrib = 0.5 * (activation(a + c) - activation(c) + activation(a + b + c) - activation(b + c))
     b_contrib = 0.5 * (activation(b + c) - activation(c) + activation(a + b + c) - activation(a + c))
     return a_contrib, b_contrib, activation(c)
@@ -215,12 +226,14 @@ out = self.relu(out)</p></section>
 <span>def <span class="ident">propagate_batchnorm2d</span></span>(<span>relevant, irrelevant, module, device='cuda')</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Propagate batchnorm2d operation</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def propagate_batchnorm2d(relevant, irrelevant, module, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;Propagate batchnorm2d operation
+    &#39;&#39;&#39;
     bias = module(torch.zeros(irrelevant.size()).to(device))
     rel = module(relevant) - bias
     irrel = module(irrelevant) - bias
@@ -238,12 +251,18 @@ out = self.relu(out)</p></section>
 <span>def <span class="ident">propagate_conv_linear</span></span>(<span>relevant, irrelevant, module, device='cuda')</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Propagate convolutional or linear layer
+Apply linear part to both pieces
+Split bias based on the ratio of the absolute sums</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def propagate_conv_linear(relevant, irrelevant, module, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;Propagate convolutional or linear layer
+    Apply linear part to both pieces
+    Split bias based on the ratio of the absolute sums
+    &#39;&#39;&#39;
     bias = module(torch.zeros(irrelevant.size()).to(device))
     rel = module(relevant) - bias
     irrel = module(irrelevant) - bias
@@ -261,12 +280,16 @@ out = self.relu(out)</p></section>
 <span>def <span class="ident">propagate_dropout</span></span>(<span>relevant, irrelevant, dropout)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>propagate dropout operation
+just applies dropout to each piece separately</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def propagate_dropout(relevant, irrelevant, dropout):
+    &#39;&#39;&#39;propagate dropout operation
+    just applies dropout to each piece separately
+    &#39;&#39;&#39;
     return dropout(relevant), dropout(irrelevant)</code></pre>
 </details>
 </dd>
@@ -289,7 +312,7 @@ out = self.relu(out)</p></section>
     
     # pooling function
     def unpool(tensor, indices):
-        &#39;&#39;&#39;unpool tensor given indices for pooling
+        &#39;&#39;&#39;Unpool tensor given indices for pooling
         &#39;&#39;&#39;
         batch_size, in_channels, H, W = indices.shape
         output = torch.ones_like(indices, dtype=torch.float)
@@ -306,12 +329,14 @@ out = self.relu(out)</p></section>
 <span>def <span class="ident">propagate_relu</span></span>(<span>relevant, irrelevant, activation, device='cuda')</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>propagate ReLu nonlinearity</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def propagate_relu(relevant, irrelevant, activation, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;propagate ReLu nonlinearity
+    &#39;&#39;&#39;
     swap_inplace = False
     try:  # handles inplace
         if activation.inplace:
@@ -346,12 +371,14 @@ out = self.relu(out)</p></section>
 <span>def <span class="ident">propagate_three</span></span>(<span>a, b, c, activation)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Propagate a three-part nonlinearity</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def propagate_three(a, b, c, activation):
+    &#39;&#39;&#39;Propagate a three-part nonlinearity
+    &#39;&#39;&#39;
     a_contrib = 0.5 * (activation(a + c) - activation(c) + activation(a + b + c) - activation(b + c))
     b_contrib = 0.5 * (activation(b + c) - activation(c) + activation(a + b + c) - activation(a + c))
     return a_contrib, b_contrib, activation(c)</code></pre>

@@ -8,7 +8,7 @@ Official code for using / reproducing ACD from the paper "[Hierarchical interpre
 
 # examples/documentation
 
-- **installation**: `pip install pip+https://github.com/csinva/max-activation-interpretation-pytorch`
+- **installation**: `pip install pip+https://github.com/csinva/hierarchical-dnn-interpretations`
 - **examples**: the [reproduce_figs](reproduce_figs) folder has notebooks with many demos
 - **api**: the [api](https://csinva.github.io/hierarchical-dnn-interpretations/docs/acd/) gives a list of available functions
 - **src**: the [acd](acd) folder contains the source for the method implementation
@@ -40,7 +40,6 @@ to use ACD on your own model, replace the models in the examples with your own t
 # reference
 
 - feel free to use/share this code openly
-
 - if you find this code useful for your research, please cite the following:
 
   ```c

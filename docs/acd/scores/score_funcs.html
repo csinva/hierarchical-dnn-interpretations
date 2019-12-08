@@ -35,7 +35,15 @@ from .cd import cd, cd_text
 from tqdm import tqdm
 
 
-def gradient_times_input_scores(im, ind, model, device=&#39;cuda&#39;):
+def gradient_times_input_scores(im: np.ndarray, ind: int, model, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;
+    Params
+    ------
+    im: np.ndarray
+        Image to get scores with respect to
+    ind: int
+        Which class to take gradient with respect to
+    &#39;&#39;&#39;
     ind = torch.LongTensor([np.int(ind)]).to(device)
     if im.grad is not None:
         im.grad.data.zero_()
@@ -50,7 +58,7 @@ def gradient_times_input_scores(im, ind, model, device=&#39;cuda&#39;):
 
 
 def ig_scores_2d(model, im_torch, num_classes=10, im_size=28, sweep_dim=1, ind=None, device=&#39;cuda&#39;):
-    &#39;&#39;&#39;Compute IG scores
+    &#39;&#39;&#39;Compute integrated gradients scores (2D input)
     &#39;&#39;&#39;
     
     for p in model.parameters():
@@ -102,6 +110,8 @@ def ig_scores_2d(model, im_torch, num_classes=10, im_size=28, sweep_dim=1, ind=N
 
 
 def ig_scores_1d(batch, model, inputs, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;Compute integrated gradients scores (1D input)
+    &#39;&#39;&#39;
     for p in model.parameters():
         if p.grad is not None:
             p.grad.data.zero_()
@@ -134,8 +144,18 @@ def ig_scores_1d(batch, model, inputs, device=&#39;cuda&#39;):
     return scores.cpu().numpy()
 
 
-# return scores (higher is better)
 def get_scores_1d(batch, model, method, label, only_one, score_orig, text_orig, subtract=False, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;Return attribution scores for 1D input
+    Params
+    ------
+    method: str
+        What type of method to use for attribution (e.g. cd, occlusion)
+        
+    Returns
+    -------
+    scores: np.ndarray
+        Higher scores are more important
+    &#39;&#39;&#39;
     # calculate scores
     if method == &#39;cd&#39;:
         if only_one:
@@ -157,9 +177,18 @@ def get_scores_1d(batch, model, method, label, only_one, score_orig, text_orig, 
     else:
         return scores[:, label]
 
-
-# return scores (higher is better)
 def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type=&#39;mnist&#39;, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;Return attribution scores for 2D input
+    Params
+    ------
+    method: str
+        What type of method to use for attribution (e.g. cd, occlusion)
+        
+    Returns
+    -------
+    scores: np.ndarray
+        Higher scores are more important
+    &#39;&#39;&#39;
     scores = []
     if method == &#39;cd&#39;:
         for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches
@@ -178,11 +207,13 @@ def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type=&
     return scores
 
 
-# converts build up tiles into indices for cd
-# Cd requires batch of [start, stop) with unigrams working
-# build up tiles are of the form [0, 0, 12, 35, 0, 0]
-# return a list of starts and indices
+
 def tiles_to_cd(batch):
+    &#39;&#39;&#39;Converts build up tiles into indices for cd
+    Cd requires batch of [start, stop) with unigrams working
+    build up tiles are of the form [0, 0, 12, 35, 0, 0]
+    return a list of starts and indices
+    &#39;&#39;&#39;
     starts, stops = [], []
     tiles = batch.text.data.cpu().numpy()
     L = tiles.shape[0]
@@ -210,12 +241,34 @@ def tiles_to_cd(batch):
 <span>def <span class="ident">get_scores_1d</span></span>(<span>batch, model, method, label, only_one, score_orig, text_orig, subtract=False, device='cuda')</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Return attribution scores for 1D input
+Params</p>
+<hr>
+<dl>
+<dt><strong><code>method</code></strong> :&ensp;<code>str</code></dt>
+<dd>What type of method to use for attribution (e.g. cd, occlusion)</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>scores</code></strong> :&ensp;<code>np.ndarray</code></dt>
+<dd>Higher scores are more important</dd>
+</dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def get_scores_1d(batch, model, method, label, only_one, score_orig, text_orig, subtract=False, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;Return attribution scores for 1D input
+    Params
+    ------
+    method: str
+        What type of method to use for attribution (e.g. cd, occlusion)
+        
+    Returns
+    -------
+    scores: np.ndarray
+        Higher scores are more important
+    &#39;&#39;&#39;
     # calculate scores
     if method == &#39;cd&#39;:
         if only_one:
@@ -242,12 +295,34 @@ def tiles_to_cd(batch):
 <span>def <span class="ident">get_scores_2d</span></span>(<span>model, method, ims, im_torch=None, pred_ims=None, model_type='mnist', device='cuda')</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Return attribution scores for 2D input
+Params</p>
+<hr>
+<dl>
+<dt><strong><code>method</code></strong> :&ensp;<code>str</code></dt>
+<dd>What type of method to use for attribution (e.g. cd, occlusion)</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>scores</code></strong> :&ensp;<code>np.ndarray</code></dt>
+<dd>Higher scores are more important</dd>
+</dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type=&#39;mnist&#39;, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;Return attribution scores for 2D input
+    Params
+    ------
+    method: str
+        What type of method to use for attribution (e.g. cd, occlusion)
+        
+    Returns
+    -------
+    scores: np.ndarray
+        Higher scores are more important
+    &#39;&#39;&#39;
     scores = []
     if method == &#39;cd&#39;:
         for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches
@@ -270,12 +345,26 @@ def tiles_to_cd(batch):
 <span>def <span class="ident">gradient_times_input_scores</span></span>(<span>im, ind, model, device='cuda')</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><h2 id="params">Params</h2>
+<dl>
+<dt><strong><code>im</code></strong> :&ensp;<code>np.ndarray</code></dt>
+<dd>Image to get scores with respect to</dd>
+<dt><strong><code>ind</code></strong> :&ensp;<code>int</code></dt>
+<dd>Which class to take gradient with respect to</dd>
+</dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def gradient_times_input_scores(im, ind, model, device=&#39;cuda&#39;):
+<pre><code class="python">def gradient_times_input_scores(im: np.ndarray, ind: int, model, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;
+    Params
+    ------
+    im: np.ndarray
+        Image to get scores with respect to
+    ind: int
+        Which class to take gradient with respect to
+    &#39;&#39;&#39;
     ind = torch.LongTensor([np.int(ind)]).to(device)
     if im.grad is not None:
         im.grad.data.zero_()
@@ -291,12 +380,14 @@ def tiles_to_cd(batch):
 <span>def <span class="ident">ig_scores_1d</span></span>(<span>batch, model, inputs, device='cuda')</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Compute integrated gradients scores (1D input)</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def ig_scores_1d(batch, model, inputs, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;Compute integrated gradients scores (1D input)
+    &#39;&#39;&#39;
     for p in model.parameters():
         if p.grad is not None:
             p.grad.data.zero_()
@@ -333,13 +424,13 @@ def tiles_to_cd(batch):
 <span>def <span class="ident">ig_scores_2d</span></span>(<span>model, im_torch, num_classes=10, im_size=28, sweep_dim=1, ind=None, device='cuda')</span>
 </code></dt>
 <dd>
-<section class="desc"><p>Compute IG scores</p></section>
+<section class="desc"><p>Compute integrated gradients scores (2D input)</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def ig_scores_2d(model, im_torch, num_classes=10, im_size=28, sweep_dim=1, ind=None, device=&#39;cuda&#39;):
-    &#39;&#39;&#39;Compute IG scores
+    &#39;&#39;&#39;Compute integrated gradients scores (2D input)
     &#39;&#39;&#39;
     
     for p in model.parameters():
@@ -394,12 +485,20 @@ def tiles_to_cd(batch):
 <span>def <span class="ident">tiles_to_cd</span></span>(<span>batch)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Converts build up tiles into indices for cd
+Cd requires batch of [start, stop) with unigrams working
+build up tiles are of the form [0, 0, 12, 35, 0, 0]
+return a list of starts and indices</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def tiles_to_cd(batch):
+    &#39;&#39;&#39;Converts build up tiles into indices for cd
+    Cd requires batch of [start, stop) with unigrams working
+    build up tiles are of the form [0, 0, 12, 35, 0, 0]
+    return a list of starts and indices
+    &#39;&#39;&#39;
     starts, stops = [], []
     tiles = batch.text.data.cpu().numpy()
     L = tiles.shape[0]

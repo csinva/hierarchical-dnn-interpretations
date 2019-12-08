@@ -7,8 +7,10 @@ from .cd_propagate import *
 
 
 def cd_propagate_resnet(rel, irrel, model):
-    # each BasicBlock passes its input through to its output (might need to downsample)
-    # note: the bigger resnets use BottleNeck instead of BasicBlock
+    '''Propagate a resnet architecture
+    each BasicBlock passes its input through to its output (might need to downsample)
+    note: the bigger resnets use BottleNeck instead of BasicBlock
+    '''
     mods = list(model.modules())
     from .cd import cd_generic
     '''
@@ -57,6 +59,11 @@ def cd_propagate_resnet(rel, irrel, model):
 
 
 def cd_propagate_mnist(relevant, irrelevant, model):
+    '''Propagate a specific mnist architecture
+    The reason we can't automatically get this score with cd_generic is because
+    the model.modules() is missing some things like self.maxpool, and self.Relu
+    because the model file only defined these things in the forward method
+    '''
     mods = list(model.modules())[1:]
     relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mods[0])
     relevant, irrelevant = propagate_pooling(relevant, irrelevant,

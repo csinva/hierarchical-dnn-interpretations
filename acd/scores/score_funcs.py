@@ -9,7 +9,15 @@ from .cd import cd, cd_text
 from tqdm import tqdm
 
 
-def gradient_times_input_scores(im, ind, model, device='cuda'):
+def gradient_times_input_scores(im: np.ndarray, ind: int, model, device='cuda'):
+    '''
+    Params
+    ------
+    im: np.ndarray
+        Image to get scores with respect to
+    ind: int
+        Which class to take gradient with respect to
+    '''
     ind = torch.LongTensor([np.int(ind)]).to(device)
     if im.grad is not None:
         im.grad.data.zero_()
@@ -24,7 +32,7 @@ def gradient_times_input_scores(im, ind, model, device='cuda'):
 
 
 def ig_scores_2d(model, im_torch, num_classes=10, im_size=28, sweep_dim=1, ind=None, device='cuda'):
-    '''Compute IG scores
+    '''Compute integrated gradients scores (2D input)
     '''
     
     for p in model.parameters():
@@ -76,6 +84,8 @@ def ig_scores_2d(model, im_torch, num_classes=10, im_size=28, sweep_dim=1, ind=N
 
 
 def ig_scores_1d(batch, model, inputs, device='cuda'):
+    '''Compute integrated gradients scores (1D input)
+    '''
     for p in model.parameters():
         if p.grad is not None:
             p.grad.data.zero_()
@@ -108,8 +118,18 @@ def ig_scores_1d(batch, model, inputs, device='cuda'):
     return scores.cpu().numpy()
 
 
-# return scores (higher is better)
 def get_scores_1d(batch, model, method, label, only_one, score_orig, text_orig, subtract=False, device='cuda'):
+    '''Return attribution scores for 1D input
+    Params
+    ------
+    method: str
+        What type of method to use for attribution (e.g. cd, occlusion)
+        
+    Returns
+    -------
+    scores: np.ndarray
+        Higher scores are more important
+    '''
     # calculate scores
     if method == 'cd':
         if only_one:
@@ -131,9 +151,18 @@ def get_scores_1d(batch, model, method, label, only_one, score_orig, text_orig, 
     else:
         return scores[:, label]
 
-
-# return scores (higher is better)
 def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type='mnist', device='cuda'):
+    '''Return attribution scores for 2D input
+    Params
+    ------
+    method: str
+        What type of method to use for attribution (e.g. cd, occlusion)
+        
+    Returns
+    -------
+    scores: np.ndarray
+        Higher scores are more important
+    '''
     scores = []
     if method == 'cd':
         for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches
@@ -152,11 +181,13 @@ def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type='
     return scores
 
 
-# converts build up tiles into indices for cd
-# Cd requires batch of [start, stop) with unigrams working
-# build up tiles are of the form [0, 0, 12, 35, 0, 0]
-# return a list of starts and indices
+
 def tiles_to_cd(batch):
+    '''Converts build up tiles into indices for cd
+    Cd requires batch of [start, stop) with unigrams working
+    build up tiles are of the form [0, 0, 12, 35, 0, 0]
+    return a list of starts and indices
+    '''
     starts, stops = [], []
     tiles = batch.text.data.cpu().numpy()
     L = tiles.shape[0]

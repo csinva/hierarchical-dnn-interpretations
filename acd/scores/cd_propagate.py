@@ -5,8 +5,11 @@ import numpy as np
 from scipy.special import expit as sigmoid
 
 
-# propagate convolutional or linear layer
 def propagate_conv_linear(relevant, irrelevant, module, device='cuda'):
+    '''Propagate convolutional or linear layer
+    Apply linear part to both pieces
+    Split bias based on the ratio of the absolute sums
+    '''
     bias = module(torch.zeros(irrelevant.size()).to(device))
     rel = module(relevant) - bias
     irrel = module(irrelevant) - bias
@@ -19,8 +22,10 @@ def propagate_conv_linear(relevant, irrelevant, module, device='cuda'):
     prop_irrel = torch.div(prop_irrel, prop_sum)
     return rel + torch.mul(prop_rel, bias), irrel + torch.mul(prop_irrel, bias)
 
-# propagate batchnorm2d operation
+
 def propagate_batchnorm2d(relevant, irrelevant, module, device='cuda'):
+    '''Propagate batchnorm2d operation
+    '''
     bias = module(torch.zeros(irrelevant.size()).to(device))
     rel = module(relevant) - bias
     irrel = module(irrelevant) - bias
@@ -43,7 +48,7 @@ def propagate_pooling(relevant, irrelevant, pooler):
     
     # pooling function
     def unpool(tensor, indices):
-        '''unpool tensor given indices for pooling
+        '''Unpool tensor given indices for pooling
         '''
         batch_size, in_channels, H, W = indices.shape
         output = torch.ones_like(indices, dtype=torch.float)
@@ -55,8 +60,10 @@ def propagate_pooling(relevant, irrelevant, pooler):
     rel, irrel = unpool(relevant, both_ind), unpool(irrelevant, both_ind)
     return rel, irrel
 
-# propagate ReLu nonlinearity
+
 def propagate_relu(relevant, irrelevant, activation, device='cuda'):
+    '''propagate ReLu nonlinearity
+    '''
     swap_inplace = False
     try:  # handles inplace
         if activation.inplace:
@@ -72,12 +79,16 @@ def propagate_relu(relevant, irrelevant, activation, device='cuda'):
     return rel_score, irrel_score
 
 
-# propagate dropout operation
 def propagate_dropout(relevant, irrelevant, dropout):
+    '''propagate dropout operation
+    just applies dropout to each piece separately
+    '''
     return dropout(relevant), dropout(irrelevant)
 
-# propagate a three-part
+
 def propagate_three(a, b, c, activation):
+    '''Propagate a three-part nonlinearity
+    '''
     a_contrib = 0.5 * (activation(a + c) - activation(c) + activation(a + b + c) - activation(b + c))
     b_contrib = 0.5 * (activation(b + c) - activation(c) + activation(a + b + c) - activation(a + c))
     return a_contrib, b_contrib, activation(c)

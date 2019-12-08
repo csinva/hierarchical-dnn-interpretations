@@ -33,9 +33,12 @@ from .cd_propagate import *
 
 
 def cd_propagate_resnet(rel, irrel, model):
-    # each BasicBlock passes its input through to its output (might need to downsample)
-    # note: the bigger resnets use BottleNeck instead of BasicBlock
+    &#39;&#39;&#39;Propagate a resnet architecture
+    each BasicBlock passes its input through to its output (might need to downsample)
+    note: the bigger resnets use BottleNeck instead of BasicBlock
+    &#39;&#39;&#39;
     mods = list(model.modules())
+    from .cd import cd_generic
     &#39;&#39;&#39;
     # mods[1:5]
     x = self.conv1(x)
@@ -58,21 +61,15 @@ def cd_propagate_resnet(rel, irrel, model):
 
     lay_nums = [5, 18, 34, 50]
     for lay_num in lay_nums:
-#         print(mods[lay_num])
         for basic_block in mods[lay_num]:
-#             print(&#39;in shape&#39;, rel.shape, irrel.shape)
-#             print(basic_block)            
             rel, irrel = propagate_basic_block(rel, irrel, basic_block)
-#             print(&#39;out shape&#39;, rel.shape, irrel.shape)
     
     # this is written super hacky
-#     print(&#39;before avgpool&#39;)
     rel = rel.mean(axis=-1)
     irrel = irrel.mean(axis=-1)
     
     rel = rel.mean(axis=-1)
     irrel = irrel.mean(axis=-1)
-    
 #     rel, irrel = cd_generic(mods[-2:-1], rel, irrel)
 #     print(&#39;after avgpool&#39;)
     
@@ -88,6 +85,11 @@ def cd_propagate_resnet(rel, irrel, model):
 
 
 def cd_propagate_mnist(relevant, irrelevant, model):
+    &#39;&#39;&#39;Propagate a specific mnist architecture
+    The reason we can&#39;t automatically get this score with cd_generic is because
+    the model.modules() is missing some things like self.maxpool, and self.Relu
+    because the model file only defined these things in the forward method
+    &#39;&#39;&#39;
     mods = list(model.modules())[1:]
     relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mods[0])
     relevant, irrelevant = propagate_pooling(relevant, irrelevant,
@@ -237,12 +239,20 @@ def cd_track_vgg(blob, im_torch, model, model_type=&#39;vgg&#39;):
 <span>def <span class="ident">cd_propagate_mnist</span></span>(<span>relevant, irrelevant, model)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Propagate a specific mnist architecture
+The reason we can't automatically get this score with cd_generic is because
+the model.modules() is missing some things like self.maxpool, and self.Relu
+because the model file only defined these things in the forward method</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def cd_propagate_mnist(relevant, irrelevant, model):
+    &#39;&#39;&#39;Propagate a specific mnist architecture
+    The reason we can&#39;t automatically get this score with cd_generic is because
+    the model.modules() is missing some things like self.maxpool, and self.Relu
+    because the model file only defined these things in the forward method
+    &#39;&#39;&#39;
     mods = list(model.modules())[1:]
     relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mods[0])
     relevant, irrelevant = propagate_pooling(relevant, irrelevant,
@@ -268,15 +278,20 @@ def cd_track_vgg(blob, im_torch, model, model_type=&#39;vgg&#39;):
 <span>def <span class="ident">cd_propagate_resnet</span></span>(<span>rel, irrel, model)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Propagate a resnet architecture
+each BasicBlock passes its input through to its output (might need to downsample)
+note: the bigger resnets use BottleNeck instead of BasicBlock</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def cd_propagate_resnet(rel, irrel, model):
-    # each BasicBlock passes its input through to its output (might need to downsample)
-    # note: the bigger resnets use BottleNeck instead of BasicBlock
+    &#39;&#39;&#39;Propagate a resnet architecture
+    each BasicBlock passes its input through to its output (might need to downsample)
+    note: the bigger resnets use BottleNeck instead of BasicBlock
+    &#39;&#39;&#39;
     mods = list(model.modules())
+    from .cd import cd_generic
     &#39;&#39;&#39;
     # mods[1:5]
     x = self.conv1(x)
@@ -299,21 +314,15 @@ def cd_track_vgg(blob, im_torch, model, model_type=&#39;vgg&#39;):
 
     lay_nums = [5, 18, 34, 50]
     for lay_num in lay_nums:
-#         print(mods[lay_num])
         for basic_block in mods[lay_num]:
-#             print(&#39;in shape&#39;, rel.shape, irrel.shape)
-#             print(basic_block)            
             rel, irrel = propagate_basic_block(rel, irrel, basic_block)
-#             print(&#39;out shape&#39;, rel.shape, irrel.shape)
     
     # this is written super hacky
-#     print(&#39;before avgpool&#39;)
     rel = rel.mean(axis=-1)
     irrel = irrel.mean(axis=-1)
     
     rel = rel.mean(axis=-1)
     irrel = irrel.mean(axis=-1)
-    
 #     rel, irrel = cd_generic(mods[-2:-1], rel, irrel)
 #     print(&#39;after avgpool&#39;)
     
