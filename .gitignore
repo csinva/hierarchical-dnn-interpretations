@@ -9,3 +9,4 @@ __pycache__
 reproduce_figs/mnist_data
 reproduce_figs/mnist/data
 **egg*
+build
