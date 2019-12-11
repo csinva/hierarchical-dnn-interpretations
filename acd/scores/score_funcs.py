@@ -157,6 +157,8 @@ def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type='
     ------
     method: str
         What type of method to use for attribution (e.g. cd, occlusion)
+    ims: np.ndarray (1 x C x H x W )
+        Tiles to pass as masks to cd
         
     Returns
     -------

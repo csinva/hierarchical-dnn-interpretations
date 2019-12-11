@@ -38,23 +38,8 @@ def cd_propagate_resnet(rel, irrel, model):
         for basic_block in mods[lay_num]:
             rel, irrel = propagate_basic_block(rel, irrel, basic_block)
     
-    # this is written super hacky
-    rel = rel.mean(axis=-1)
-    irrel = irrel.mean(axis=-1)
-    
-    rel = rel.mean(axis=-1)
-    irrel = irrel.mean(axis=-1)
-#     rel, irrel = cd_generic(mods[-2:-1], rel, irrel)
-#     print('after avgpool')
-    
-    
-    
-#     print(rel.shape)
-#     rel = rel.flatten()
-#     irrel = irrel.flatten()
-    rel, irrel = cd_generic(mods[-1:], rel, irrel)
-    
-#     print(rel.shape)
+    # final things after BasicBlocks
+    rel, irrel = cd_generic(mods[-2:], rel, irrel)
     return rel, irrel
 
 

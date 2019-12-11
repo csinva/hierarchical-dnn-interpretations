@@ -5,27 +5,29 @@ import numpy as np
 from scipy.special import expit as sigmoid
 
 
-def propagate_conv_linear(relevant, irrelevant, module, device='cuda'):
+def propagate_conv_linear(relevant, irrelevant, module):
     '''Propagate convolutional or linear layer
     Apply linear part to both pieces
     Split bias based on the ratio of the absolute sums
     '''
+    device = relevant.device
     bias = module(torch.zeros(irrelevant.size()).to(device))
     rel = module(relevant) - bias
     irrel = module(irrelevant) - bias
 
     # elementwise proportional
-    prop_rel = torch.abs(rel)
-    prop_irrel = torch.abs(irrel)
+    prop_rel = torch.abs(rel) + 1e-20 # add a small constant so we don't divide by 0
+    prop_irrel = torch.abs(irrel) + 1e-20 # add a small constant so we don't divide by 0
     prop_sum = prop_rel + prop_irrel
     prop_rel = torch.div(prop_rel, prop_sum)
     prop_irrel = torch.div(prop_irrel, prop_sum)
     return rel + torch.mul(prop_rel, bias), irrel + torch.mul(prop_irrel, bias)
 
 
-def propagate_batchnorm2d(relevant, irrelevant, module, device='cuda'):
+def propagate_batchnorm2d(relevant, irrelevant, module):
     '''Propagate batchnorm2d operation
     '''
+    device = relevant.device
     bias = module(torch.zeros(irrelevant.size()).to(device))
     rel = module(relevant) - bias
     irrel = module(irrelevant) - bias
@@ -46,7 +48,7 @@ def propagate_pooling(relevant, irrelevant, pooler):
     p.return_indices = True
     both, both_ind = p(relevant + irrelevant)
     
-    # pooling function
+    # unpooling function
     def unpool(tensor, indices):
         '''Unpool tensor given indices for pooling
         '''
@@ -60,10 +62,15 @@ def propagate_pooling(relevant, irrelevant, pooler):
     rel, irrel = unpool(relevant, both_ind), unpool(irrelevant, both_ind)
     return rel, irrel
 
+def propagate_avgpool(relevant, irrelevant, pooler):
+    '''propagate avgpool
+    '''
+    return pooler(relevant), pooler(irrelevant)
 
-def propagate_relu(relevant, irrelevant, activation, device='cuda'):
+def propagate_relu(relevant, irrelevant, activation):
     '''propagate ReLu nonlinearity
     '''
+    device = relevant.device
     swap_inplace = False
     try:  # handles inplace
         if activation.inplace:

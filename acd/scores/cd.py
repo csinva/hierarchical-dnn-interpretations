@@ -36,6 +36,7 @@ def cd(im_torch: torch.Tensor, model, mask=None, model_type=None, device='cuda',
     
     # set up model
     model.eval()
+    model = model.to(device)
     im_torch = im_torch.to(device)
     
     # set up masks
@@ -53,13 +54,16 @@ def cd(im_torch: torch.Tensor, model, mask=None, model_type=None, device='cuda',
     relevant = relevant.to(device)
     irrelevant = irrelevant.to(device)
 
+    # deal with specific architectures which have problems
     if model_type == 'mnist':
         return cd_propagate_mnist(relevant, irrelevant, model)
     elif model_type == 'resnet18':
         return cd_propagate_resnet(relevant, irrelevant, model)
     
-    mods = list(model.modules())
-    relevant, irrelevant = cd_generic(mods, relevant, irrelevant)
+    # try the generic case
+    else:
+        mods = list(model.modules())
+        relevant, irrelevant = cd_generic(mods, relevant, irrelevant)
     return relevant, irrelevant
 
 def cd_generic(mods, relevant, irrelevant):
@@ -76,7 +80,9 @@ def cd_generic(mods, relevant, irrelevant):
             relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mod)
         elif 'ReLU' in t:
             relevant, irrelevant = propagate_relu(relevant, irrelevant, mod)
-        elif 'Pool' in t:
+        elif 'AvgPool' in t:
+            relevant, irrelevant = propagate_avgpool(relevant, irrelevant, mod)
+        elif 'Pool' in t and not 'AvgPool' in t:
             relevant, irrelevant = propagate_pooling(relevant, irrelevant, mod)
         elif 'Dropout' in t:
             relevant, irrelevant = propagate_dropout(relevant, irrelevant, mod)

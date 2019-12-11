@@ -1,11 +1,7 @@
 import numpy as np
 import torch
 import sys
-sys.path.append('..')
-sys.path.append('../acd/util')
-sys.path.append('../acd/scores')
-import cd
-import score_funcs
+import acd
 import pickle as pkl
 import warnings
 warnings.filterwarnings("ignore")
@@ -39,12 +35,12 @@ def test_sst(device='cpu'):
 
     # check that full sentence = prediction
     preds = preds - model.hidden_to_label.bias.detach().numpy()
-    cd_score, irrel_scores = cd.cd_text(batch, model, start=0, stop=len(sentence), return_irrel_scores=True)
+    cd_score, irrel_scores = acd.cd_text(batch, model, start=0, stop=len(sentence), return_irrel_scores=True)
     assert(np.allclose(cd_score, preds, atol=1e-2))
     assert(np.allclose(irrel_scores, irrel_scores * 0, atol=1e-2))
 
     # check that rel + irrel = prediction for another subset
-    cd_score, irrel_scores = cd.cd_text(batch, model, start=3, stop=len(sentence), return_irrel_scores=True)
+    cd_score, irrel_scores = acd.cd_text(batch, model, start=3, stop=len(sentence), return_irrel_scores=True)
     assert(np.allclose(cd_score + irrel_scores, preds, atol=1e-2))
     
 def test_mnist(device='cuda'):
@@ -61,7 +57,7 @@ def test_mnist(device='cuda'):
     
     # check that full image mask = prediction
     preds = model.logits(im_torch).cpu().detach().numpy()
-    cd_score, irrel_scores = cd.cd(np.ones((1, 1, 28, 28)), im_torch, model, model_type='mnist', device=device)
+    cd_score, irrel_scores = acd.cd(im_torch, model, mask=np.ones((1, 1, 28, 28)), model_type='mnist', device=device)
     cd_score = cd_score.cpu().detach().numpy()
     irrel_scores = irrel_scores.cpu().detach().numpy()
     assert(np.allclose(cd_score, preds, atol=1e-2))
@@ -71,12 +67,12 @@ def test_mnist(device='cuda'):
     # preds = preds - model.hidden_to_label.bias.detach().numpy()
     mask = np.zeros((28, 28))
     mask[:14] = 1
-    cd_score, irrel_scores = cd.cd(mask, im_torch, model, model_type='mnist', device=device)
+    cd_score, irrel_scores = acd.cd(im_torch, model, mask=mask, model_type='mnist', device=device)
     cd_score = cd_score.cpu().detach().numpy()
     irrel_scores = irrel_scores.cpu().detach().numpy()
     assert(np.allclose(cd_score + irrel_scores, preds, atol=1e-2))
     
-def test_imagenet_vgg(device='cuda', arch='vgg'):
+def test_imagenet(device='cuda', arch='vgg'):
     # get dataset
     from torchvision import models
     imnet_dict = pkl.load(open('../dsets/imagenet/imnet_dict.pkl', 'rb')) # contains 6 images (keys: 9, 10, 34, 20, 36, 32)
@@ -86,24 +82,28 @@ def test_imagenet_vgg(device='cuda', arch='vgg'):
         model = models.vgg16(pretrained=True).to(device).eval()
     elif arch == 'alexnet':
         model = models.alexnet(pretrained=True).to(device).eval()
+    elif arch == 'resnet18':
+        model = models.resnet18(pretrained=True).to(device).eval()
     im_torch = torch.randn(1, 3, 224, 224).to(device)
     
-    # check that full image mask = prediction
+    # get predictions
     preds = model(im_torch).cpu().detach().numpy()
-    cd_score, irrel_scores = cd.cd(np.ones((1, 3, 224, 224)), im_torch, model, device=device)
-    cd_score = cd_score.cpu().detach().numpy()
-    irrel_scores = irrel_scores.cpu().detach().numpy()
-    assert(np.allclose(cd_score, preds, atol=1e-2))
-    assert(np.allclose(irrel_scores, irrel_scores * 0, atol=1e-2))
-
+    
     # check that rel + irrel = prediction for another subset
-    # preds = preds - model.hidden_to_label.bias.detach().numpy()
     mask = np.ones((1, 3, 224, 224))
     mask[:, :, :14] = 1
-    cd_score, irrel_scores = cd.cd(mask, im_torch, model, device=device)
+    cd_score, irrel_scores = acd.cd(im_torch, model, mask=mask, device=device, model_type=arch)
     cd_score = cd_score.cpu().detach().numpy()
     irrel_scores = irrel_scores.cpu().detach().numpy()
     assert(np.allclose(cd_score + irrel_scores, preds, atol=1e-2))
+    
+    # check that full image mask = prediction
+    cd_score, irrel_scores = acd.cd(im_torch, model, mask=np.ones((1, 3, 224, 224)), device=device, model_type=arch)
+    cd_score = cd_score.cpu().detach().numpy()
+    irrel_scores = irrel_scores.cpu().detach().numpy()
+    # print(cd_score.flatten()[:5], irrel_scores.flatten()[:5], preds.flatten()[:5])
+    assert(np.allclose(cd_score, preds, atol=1e-2))
+    assert(np.allclose(irrel_scores, irrel_scores * 0, atol=1e-2))
     
 if __name__ == '__main__':
     print('testing sst...')
@@ -111,9 +111,14 @@ if __name__ == '__main__':
     print('testing mnist...')
     test_mnist()
     print('testing imagenet vgg...')
-    test_imagenet_vgg(arch='vgg')
+    test_imagenet(arch='vgg')
     print('testing imagenet alexnet...')
-    test_imagenet_vgg(arch='alexnet')
-    print('all tests passed!')
-    
+    test_imagenet(arch='alexnet')
+    print('testing imagenet resnet18...')
+    with torch.no_grad():        
+        test_imagenet(arch='resnet18')
+        print('all tests passed!')
+
     # loop over device types?
+
+    # try without torch.no_grad()?
