@@ -11,19 +11,20 @@ def cd(im_torch: torch.Tensor, model, mask=None, model_type=None, device='cuda',
     
     Params
     ------
+    im_torch: torch.Tensor
+        example to interpret - usually has shape (batch_size, num_channels, height, width)
+    model: pytorch model        
     mask: array_like (values in {0, 1})
         required unless transform is supplied
         array with 1s marking the locations of relevant pixels, 0s marking the background
-        shape should match the shape of im_torch or just H x W
-    im_torch: torch.Tensor
-        example to interpret - usually has shape (batch_size, num_channels, height, width)
+        shape should match the shape of im_torch or just H x W        
     model_type: str, optional
         usually should just leave this blank
         if this is == 'mnist', uses CD for a specific mnist model
         if this is == 'resnet18', uses resnet18 model
     device: str, optional
     transform: function
-        transform should be a function which transforms the original image
+        transform should be a function which transforms the original image to specify rel
         only used if mask is not passed
         
     Returns
@@ -33,7 +34,6 @@ def cd(im_torch: torch.Tensor, model, mask=None, model_type=None, device='cuda',
     irrelevant: torch.Tensor
         class-wise scores for everything but the relevant mask 
     '''
-    
     # set up model
     model.eval()
     model = model.to(device)
@@ -72,6 +72,7 @@ def cd_generic(mods, relevant, irrelevant):
     '''
     for i, mod in enumerate(mods):
         t = str(type(mod))
+        # print(t, relevant.shape)
         if 'Conv2d' in t:
             relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mod)
         elif 'Linear' in t:
@@ -80,12 +81,10 @@ def cd_generic(mods, relevant, irrelevant):
             relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mod)
         elif 'ReLU' in t:
             relevant, irrelevant = propagate_relu(relevant, irrelevant, mod)
-        elif 'AvgPool' in t:
-            relevant, irrelevant = propagate_avgpool(relevant, irrelevant, mod)
+        elif 'AvgPool' in t or 'NormLayer' in t or 'Dropout' in t or 'ReshapeLayer' in t:
+            relevant, irrelevant = propagate_independent(relevant, irrelevant, mod)
         elif 'Pool' in t and not 'AvgPool' in t:
             relevant, irrelevant = propagate_pooling(relevant, irrelevant, mod)
-        elif 'Dropout' in t:
-            relevant, irrelevant = propagate_dropout(relevant, irrelevant, mod)
         elif 'BatchNorm2d' in t:
             relevant, irrelevant = propagate_batchnorm2d(relevant, irrelevant, mod)
     return relevant, irrelevant

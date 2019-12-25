@@ -62,10 +62,11 @@ def propagate_pooling(relevant, irrelevant, pooler):
     rel, irrel = unpool(relevant, both_ind), unpool(irrelevant, both_ind)
     return rel, irrel
 
-def propagate_avgpool(relevant, irrelevant, pooler):
-    '''propagate avgpool
+def propagate_independent(relevant, irrelevant, module):
+    '''use for things which operate independently
+    ex. avgpool, layer_norm, dropout
     '''
-    return pooler(relevant), pooler(irrelevant)
+    return module(relevant), module(irrelevant)
 
 def propagate_relu(relevant, irrelevant, activation):
     '''propagate ReLu nonlinearity
@@ -84,13 +85,6 @@ def propagate_relu(relevant, irrelevant, activation):
     if swap_inplace:
         activation.inplace = True
     return rel_score, irrel_score
-
-
-def propagate_dropout(relevant, irrelevant, dropout):
-    '''propagate dropout operation
-    just applies dropout to each piece separately
-    '''
-    return dropout(relevant), dropout(irrelevant)
 
 
 def propagate_three(a, b, c, activation):

@@ -21,19 +21,15 @@ Official code for using / reproducing ACD from the paper "[Hierarchical interpre
 | ![](reproduce_figs/figs/fig_2.png) | ![](reproduce_figs/figs/fig_s3.png) | ![](reproduce_figs/figs/fig_s2.png) |
 
 
+# notes on using ACD on your own data
+- the current CD implementation doesn't always work for all types of networks. If you are getting an error inside of `cd.py`, you may need to write a custom function that iterates through the layers of your network (for examples see `cd.py`). Should work out-of-the-box for many common layers though, including antyhing in alexnet, vgg, or resnet.
+- to use baselines such build-up and occlusion, replace the pred_ims function by a function, which gets predictions from your model given a batch of examples.
 
-# using ACD on your own data
-
-to use ACD on your own model, replace the models in the examples with your own trained models. Specifically, 3 things must be altered:
-  
-1. the pred_ims function must be replaced by a function you write using your own trained model. This function gets predictions from a model given a batch of examples.
-2. the model must be replaced with your model
-3. the current CD implementation doesn't always work for all types of networks. If you are getting an error inside of `cd.py`, you may need to write a custom function that iterates through the layers of your network (for examples see `cd.py`). Should work out-of-the-box for many common layers though, including antyhing in alexnet, vgg, or resnet.
 
 # related work
 
 - this work is part of an overarching project on interpretable machine learning, guided by the [PDR framework](https://arxiv.org/abs/1901.04592)
-- see the [github repo](https://github.com/laura-rieger/deep-explanation-penalization) for [followup work](https://arxiv.org/abs/1909.13584) on penalizing these scores to improve models during training
+- see the [github repo](https://github.com/laura-rieger/deep-explanation-penalization) for [CDEP](https://arxiv.org/abs/1909.13584), which penalizes these scores to improve models during training
 - see the [github repo](https://github.com/csinva/disentangled-attribution-curves) for [disentangled attribution curves](https://arxiv.org/abs/1905.07631) for ideas on extending disentangled interpretations to random forests
 - the file scores/score_funcs.py also contains simple pytorch implementations of [integrated gradients](https://arxiv.org/abs/1703.01365) and the simple interpration technique gradient * input
 
@@ -43,12 +39,14 @@ to use ACD on your own model, replace the models in the examples with your own t
 - if you find this code useful for your research, please cite the following:
 
   ```c
-  @article{singh2018hierarchical,
+    @inproceedings{
+    singh2018hierarchical,
     title={Hierarchical interpretations for neural network predictions},
-    author={Singh, Chandan and Murdoch, W James and Yu, Bin},
-    journal={arXiv preprint arXiv:1806.05337},
-    year={2018}
-  }
+    author={Chandan Singh and W. James Murdoch and Bin Yu},
+    booktitle={International Conference on Learning Representations},
+    year={2019},
+    url={https://openreview.net/forum?id=SkEqro0ctQ},
+    }
   ```
 
   

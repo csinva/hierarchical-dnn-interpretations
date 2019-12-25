@@ -151,7 +151,7 @@ def get_scores_1d(batch, model, method, label, only_one, score_orig, text_orig, 
     else:
         return scores[:, label]
 
-def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type='mnist', device='cuda'):
+def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type=None, device='cuda'):
     '''Return attribution scores for 2D input
     Params
     ------
@@ -168,7 +168,8 @@ def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type='
     scores = []
     if method == 'cd':
         for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches
-            scores.append(cd(im_torch, model, np.expand_dims(ims[i], 0), model_type, device=device)[0].data.cpu().numpy())
+            scores.append(cd(im_torch, model, np.expand_dims(ims[i], 0), model_type, 
+                             device=device)[0].data.cpu().numpy())
         scores = np.squeeze(np.array(scores))
     elif method == 'build_up':
         for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches

@@ -2,9 +2,14 @@ import numpy as np
 
 
 # pytorch needs to return each input as a column
-# return batch_size x L tensor
 def gen_tiles(text, fill=0,
               method='occlusion', prev_text=None, sweep_dim=1):
+    '''
+    Returns
+    -------
+    texts: np.ndarray
+        batch_size x L
+    '''
     L = text.shape[0]
     texts = np.zeros((L - sweep_dim + 1, L), dtype=np.int)
     for start in range(L - sweep_dim + 1):
@@ -18,9 +23,9 @@ def gen_tiles(text, fill=0,
         texts[start] = np.copy(text_new)
     return texts
 
-
-# return tile representing component
 def gen_tile_from_comp(text_orig, comp_tile, method, fill=0):
+    '''return tile representing component
+    '''
     if method == 'occlusion':
         tile_new = np.copy(text_orig).flatten()
         tile_new[comp_tile] = fill
@@ -30,8 +35,10 @@ def gen_tile_from_comp(text_orig, comp_tile, method, fill=0):
     return tile_new
 
 
-# generate tiles around component
+
 def gen_tiles_around_baseline(text_orig, comp_tile, method='build_up', sweep_dim=1, fill=0):
+    '''generate tiles around component
+    '''
     L = text_orig.shape[0]
     left = 0
     right = L - 1
