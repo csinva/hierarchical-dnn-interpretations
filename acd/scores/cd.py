@@ -72,7 +72,6 @@ def cd_generic(mods, relevant, irrelevant):
     '''
     for i, mod in enumerate(mods):
         t = str(type(mod))
-        # print(t, relevant.shape)
         if 'Conv2d' in t:
             relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mod)
         elif 'Linear' in t:
@@ -81,7 +80,8 @@ def cd_generic(mods, relevant, irrelevant):
             relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mod)
         elif 'ReLU' in t:
             relevant, irrelevant = propagate_relu(relevant, irrelevant, mod)
-        elif 'AvgPool' in t or 'NormLayer' in t or 'Dropout' in t or 'ReshapeLayer' in t:
+        elif 'AvgPool' in t or 'NormLayer' in t or 'Dropout' in t \
+             or 'ReshapeLayer' in t or ('modularize' in t and 'Transform' in t): # custom layers
             relevant, irrelevant = propagate_independent(relevant, irrelevant, mod)
         elif 'Pool' in t and not 'AvgPool' in t:
             relevant, irrelevant = propagate_pooling(relevant, irrelevant, mod)

@@ -167,16 +167,16 @@ def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type=N
     '''
     scores = []
     if method == 'cd':
-        for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches
+        for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
             scores.append(cd(im_torch, model, np.expand_dims(ims[i], 0), model_type, 
                              device=device)[0].data.cpu().numpy())
         scores = np.squeeze(np.array(scores))
     elif method == 'build_up':
-        for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches
+        for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
             scores.append(pred_ims(model, ims[i])[0])
         scores = np.squeeze(np.array(scores))
     elif method == 'occlusion':
-        for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches
+        for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
             scores.append(pred_ims(model, ims[i])[0])
         scores = -1 * np.squeeze(np.array(scores))
     if scores.ndim == 1:
