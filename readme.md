@@ -1,4 +1,4 @@
-Official code for using / reproducing ACD from the paper "[Hierarchical interpretations for neural network predictions](https://openreview.net/pdf?id=SkEqro0ctQ)" (ICLR 2019). This code produces hierarchical interpretations for a single prediction made by a neural network.
+Official code for using / reproducing ACD from the paper *Hierarchical interpretations for neural network predictions* (ICLR 2019 [pdf](https://openreview.net/pdf?id=SkEqro0ctQ)). This code produces hierarchical interpretations for a single prediction made by a neural network.
 
 *Note: this repo is actively maintained. For any questions please file an issue.*
 
@@ -28,25 +28,25 @@ Official code for using / reproducing ACD from the paper "[Hierarchical interpre
 
 # related work
 
-- this work is part of an overarching project on interpretable machine learning, guided by the [PDR framework](https://arxiv.org/abs/1901.04592)
-- see the [github repo](https://github.com/laura-rieger/deep-explanation-penalization) for [CDEP](https://arxiv.org/abs/1909.13584), which penalizes these scores to improve models during training
-- see the [github repo](https://github.com/csinva/disentangled-attribution-curves) for [disentangled attribution curves](https://arxiv.org/abs/1905.07631) for ideas on extending disentangled interpretations to random forests
-- the file scores/score_funcs.py also contains simple pytorch implementations of [integrated gradients](https://arxiv.org/abs/1703.01365) and the simple interpration technique gradient * input
+- PDR framework (PNAS 2019 [pdf](https://arxiv.org/abs/1901.04592)) - an overarching framewwork for guiding and framing interpretable machine learning
+- CDEP (ICML 2020 [pdf](https://arxiv.org/abs/1909.13584), [github](https://github.com/laura-rieger/deep-explanation-penalization)) - penalizes CD / ACD scores during training to make models generalize better
+- TRIM (ICLR 2020 workshop [pdf](https://arxiv.org/abs/2003.01926), [github](https://github.com/csinva/transformation-importance)) - using simple reparameterizations, allows for calculating disentangled importances to transformations of the input (e.g. assigning importances to different frequencies)
+- DAC (arXiv 2019 [pdf](https://arxiv.org/abs/1905.07631), [github](https://github.com/csinva/disentangled-attribution-curves)) - finds disentangled interpretations for random forests
+- Baseline interpretability methods - the file `scores/score_funcs.py` also contains simple pytorch implementations of [integrated gradients](https://arxiv.org/abs/1703.01365) and the simple interpration technique `gradient * input`
 
 # reference
 
 - feel free to use/share this code openly
 - if you find this code useful for your research, please cite the following:
 
-  ```c
-    @inproceedings{
+ ```r
+@inproceedings{
     singh2018hierarchical,
     title={Hierarchical interpretations for neural network predictions},
     author={Chandan Singh and W. James Murdoch and Bin Yu},
     booktitle={International Conference on Learning Representations},
     year={2019},
     url={https://openreview.net/forum?id=SkEqro0ctQ},
-    }
-  ```
-
+}
+```
   
