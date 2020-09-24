@@ -8,7 +8,7 @@ Official code for using / reproducing ACD from the paper *Hierarchical interpret
 
 # examples/documentation
 
-- **installation**: `git+https://github.com/csinva/hierarchical-dnn-interpretations`
+- **installation**: `pip install acd` (or clone and run `python setup.py install`)
 - **examples**: the [reproduce_figs](reproduce_figs) folder has notebooks with many demos
 - **api**: the [api](https://csinva.github.io/hierarchical-dnn-interpretations/docs/acd/) gives a list of available functions
 - **src**: the [acd](acd) folder contains the source for the method implementation
