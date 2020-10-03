@@ -2,7 +2,7 @@ Official code for using / reproducing ACD from the paper *Hierarchical interpret
 
 *Note: this repo is actively maintained. For any questions please file an issue.*
 
-![](reproduce_figs/figs/intro.png)
+![](https://csinva.io/hierarchical-dnn-interpretations/reproduce_figs/figs/intro.svg?sanitize=True)
 
 
 
@@ -48,5 +48,5 @@ Official code for using / reproducing ACD from the paper *Hierarchical interpret
     year={2019},
     url={https://openreview.net/forum?id=SkEqro0ctQ},
 }
-```
-  
+ ```
+
