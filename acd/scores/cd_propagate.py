@@ -133,3 +133,95 @@ def propagate_basic_block(rel, irrel, module):
     rel, irrel = propagate_relu(rel, irrel, module.relu)  
     
     return rel, irrel
+
+def propagate_lstm(x, module, start: int, stop: int, my_device=0):
+    '''module is an lstm layer
+    
+    Params
+    ------
+    module: lstm layer
+    x: torch.Tensor
+        (batch_size, seq_len, num_channels)
+        warning: default lstm uses shape (seq_len, batch_size, num_channels)
+    start: int
+        start of relevant sequence
+    stop: int
+        end of relevant sequence
+        
+    Returns
+    -------
+    rel, irrel: torch.Tensor
+        (batch_size, num_channels, num_hidden_lstm)
+    '''
+    
+    # extract out weights
+    W_ii, W_if, W_ig, W_io = torch.chunk(module.weight_ih_l0, 4, 0)
+    W_hi, W_hf, W_hg, W_ho = torch.chunk(module.weight_hh_l0, 4, 0)
+    b_i, b_f, b_g, b_o = torch.chunk(module.bias_ih_l0 + module.bias_hh_l0, 4)
+    
+    # prepare input x
+    x_orig = deepcopy(x)
+    x = x.permute(1, 2, 0) # convert to (seq_len, num_channels, batch_size)
+    seq_len = x.shape[0]
+    batch_size = x.shape[2]
+    output_dim = W_ho.shape[1]
+    relevant_h = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    irrelevant_h = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    prev_rel = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    prev_irrel = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    for i in range(seq_len):
+        prev_rel_h = relevant_h
+        prev_irrel_h = irrelevant_h
+        rel_i = torch.matmul(W_hi, prev_rel_h)
+        rel_g = torch.matmul(W_hg, prev_rel_h)
+        rel_f = torch.matmul(W_hf, prev_rel_h)
+        rel_o = torch.matmul(W_ho, prev_rel_h)
+        irrel_i = torch.matmul(W_hi, prev_irrel_h)
+        irrel_g = torch.matmul(W_hg, prev_irrel_h)
+        irrel_f = torch.matmul(W_hf, prev_irrel_h)
+        irrel_o = torch.matmul(W_ho, prev_irrel_h)
+
+        if i >= start and i <= stop:
+            rel_i = rel_i + torch.matmul(W_ii, x[i])
+            rel_g = rel_g + torch.matmul(W_ig, x[i])
+            rel_f = rel_f + torch.matmul(W_if, x[i])
+            rel_o = rel_o + torch.matmul(W_io, x[i])
+        else:
+            irrel_i = irrel_i + torch.matmul(W_ii, x[i])
+            irrel_g = irrel_g + torch.matmul(W_ig, x[i])
+            irrel_f = irrel_f + torch.matmul(W_if, x[i])
+            irrel_o = irrel_o + torch.matmul(W_io, x[i])
+
+        rel_contrib_i, irrel_contrib_i, bias_contrib_i = propagate_three(rel_i, irrel_i, b_i[:,None], sigmoid)
+        rel_contrib_g, irrel_contrib_g, bias_contrib_g = propagate_three(rel_g, irrel_g, b_g[:,None], tanh)
+
+        relevant = rel_contrib_i * (rel_contrib_g + bias_contrib_g) + bias_contrib_i * rel_contrib_g
+        irrelevant = irrel_contrib_i * (rel_contrib_g + irrel_contrib_g + bias_contrib_g) + (rel_contrib_i + bias_contrib_i) * irrel_contrib_g
+
+        if i >= start and i < stop:
+            relevant =relevant + bias_contrib_i * bias_contrib_g
+        else: 
+            irrelevant =irrelevant + bias_contrib_i * bias_contrib_g
+
+        if i > 0: 
+            rel_contrib_f, irrel_contrib_f, bias_contrib_f = propagate_three(rel_f, irrel_f, b_f[:,None], sigmoid)
+            relevant = relevant +(rel_contrib_f + bias_contrib_f) * prev_rel
+            irrelevant = irrelevant+(rel_contrib_f + irrel_contrib_f + bias_contrib_f) * prev_irrel + irrel_contrib_f *  prev_rel
+
+        o = sigmoid(torch.matmul(W_io, x[i]) + torch.matmul(W_ho, prev_rel_h + prev_irrel_h) + b_o[:,None])     
+        new_rel_h, new_irrel_h = propagate_tanh_two(relevant, irrelevant)
+      
+        relevant_h = o * new_rel_h
+        irrelevant_h = o * new_irrel_h
+        prev_rel = relevant
+        prev_irrel = irrelevant
+
+#     outputs, (h1, c1) = module(x_orig)
+#     assert np.allclose((relevant_h + irrelevant_h).detach().numpy().flatten(),
+#                        h1.detach().numpy().flatten(), rtol=0.01)
+    
+    
+    # reshape output
+    rel_h = relevant_h.transpose(0, 1).unsqueeze(1)
+    irrel_h = irrelevant_h.transpose(0, 1).unsqueeze(1)
+    return rel_h, irrel_h
