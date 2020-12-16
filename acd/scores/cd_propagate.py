@@ -3,6 +3,8 @@ import torch.nn.functional as F
 from copy import deepcopy
 import numpy as np
 from scipy.special import expit as sigmoid
+from torch import tanh
+
 
 
 def propagate_conv_linear(relevant, irrelevant, module):
