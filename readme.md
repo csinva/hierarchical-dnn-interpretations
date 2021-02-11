@@ -10,15 +10,15 @@
   <img src="https://static.pepy.tech/personalized-badge/acd?period=total&units=none&left_color=gray&right_color=orange&left_text=downloads">
 </p>  
 <p align="center">
-	<a href="https://csinva.io/hierarchical-dnn-interpretations/">Documentation</a>
-  <a href="https://github.com/csinva/hierarchical-dnn-interpretations/tree/master/reproduce_figs">Examples</a>
+	<a href="https://csinva.io/hierarchical-dnn-interpretations/">Documentation</a> •
+  <a href="https://github.com/csinva/hierarchical-dnn-interpretations/tree/master/reproduce_figs">Demo notebooks</a>
 </p>  
 <p align="center">
 	<i>Note: this repo is actively maintained. For any questions please file an issue.</i>
 </p>
 
 
-![](https://csinva.io/hierarchical-dnn-interpretations/reproduce_figs/figs/intro.svg?sanitize=True)
+![](https://csinva.io/hierarchical-dnn-interpretations/intro.svg?sanitize=True)
 
 
 
