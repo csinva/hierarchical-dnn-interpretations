@@ -28,9 +28,14 @@
 
 
 # pytorch needs to return each input as a column
-# return batch_size x L tensor
 def gen_tiles(text, fill=0,
               method=&#39;occlusion&#39;, prev_text=None, sweep_dim=1):
+    &#39;&#39;&#39;
+    Returns
+    -------
+    texts: np.ndarray
+        batch_size x L
+    &#39;&#39;&#39;
     L = text.shape[0]
     texts = np.zeros((L - sweep_dim + 1, L), dtype=np.int)
     for start in range(L - sweep_dim + 1):
@@ -44,9 +49,9 @@ def gen_tiles(text, fill=0,
         texts[start] = np.copy(text_new)
     return texts
 
-
-# return tile representing component
 def gen_tile_from_comp(text_orig, comp_tile, method, fill=0):
+    &#39;&#39;&#39;return tile representing component
+    &#39;&#39;&#39;
     if method == &#39;occlusion&#39;:
         tile_new = np.copy(text_orig).flatten()
         tile_new[comp_tile] = fill
@@ -56,8 +61,10 @@ def gen_tile_from_comp(text_orig, comp_tile, method, fill=0):
     return tile_new
 
 
-# generate tiles around component
+
 def gen_tiles_around_baseline(text_orig, comp_tile, method=&#39;build_up&#39;, sweep_dim=1, fill=0):
+    &#39;&#39;&#39;generate tiles around component
+    &#39;&#39;&#39;
     L = text_orig.shape[0]
     left = 0
     right = L - 1
@@ -92,12 +99,14 @@ def gen_tiles_around_baseline(text_orig, comp_tile, method=&#39;build_up&#39;, s
 <span>def <span class="ident">gen_tile_from_comp</span></span>(<span>text_orig, comp_tile, method, fill=0)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>return tile representing component</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def gen_tile_from_comp(text_orig, comp_tile, method, fill=0):
+    &#39;&#39;&#39;return tile representing component
+    &#39;&#39;&#39;
     if method == &#39;occlusion&#39;:
         tile_new = np.copy(text_orig).flatten()
         tile_new[comp_tile] = fill
@@ -111,13 +120,23 @@ def gen_tiles_around_baseline(text_orig, comp_tile, method=&#39;build_up&#39;, s
 <span>def <span class="ident">gen_tiles</span></span>(<span>text, fill=0, method='occlusion', prev_text=None, sweep_dim=1)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>texts</code></strong> :&ensp;<code>np.ndarray</code></dt>
+<dd>batch_size x L</dd>
+</dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def gen_tiles(text, fill=0,
               method=&#39;occlusion&#39;, prev_text=None, sweep_dim=1):
+    &#39;&#39;&#39;
+    Returns
+    -------
+    texts: np.ndarray
+        batch_size x L
+    &#39;&#39;&#39;
     L = text.shape[0]
     texts = np.zeros((L - sweep_dim + 1, L), dtype=np.int)
     for start in range(L - sweep_dim + 1):
@@ -136,12 +155,14 @@ def gen_tiles_around_baseline(text_orig, comp_tile, method=&#39;build_up&#39;, s
 <span>def <span class="ident">gen_tiles_around_baseline</span></span>(<span>text_orig, comp_tile, method='build_up', sweep_dim=1, fill=0)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>generate tiles around component</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def gen_tiles_around_baseline(text_orig, comp_tile, method=&#39;build_up&#39;, sweep_dim=1, fill=0):
+    &#39;&#39;&#39;generate tiles around component
+    &#39;&#39;&#39;
     L = text_orig.shape[0]
     left = 0
     right = L - 1

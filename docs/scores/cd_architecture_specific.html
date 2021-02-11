@@ -64,23 +64,8 @@ def cd_propagate_resnet(rel, irrel, model):
         for basic_block in mods[lay_num]:
             rel, irrel = propagate_basic_block(rel, irrel, basic_block)
     
-    # this is written super hacky
-    rel = rel.mean(axis=-1)
-    irrel = irrel.mean(axis=-1)
-    
-    rel = rel.mean(axis=-1)
-    irrel = irrel.mean(axis=-1)
-#     rel, irrel = cd_generic(mods[-2:-1], rel, irrel)
-#     print(&#39;after avgpool&#39;)
-    
-    
-    
-#     print(rel.shape)
-#     rel = rel.flatten()
-#     irrel = irrel.flatten()
-    rel, irrel = cd_generic(mods[-1:], rel, irrel)
-    
-#     print(rel.shape)
+    # final things after BasicBlocks
+    rel, irrel = cd_generic(mods[-2:], rel, irrel)
     return rel, irrel
 
 
@@ -317,23 +302,8 @@ note: the bigger resnets use BottleNeck instead of BasicBlock</p></section>
         for basic_block in mods[lay_num]:
             rel, irrel = propagate_basic_block(rel, irrel, basic_block)
     
-    # this is written super hacky
-    rel = rel.mean(axis=-1)
-    irrel = irrel.mean(axis=-1)
-    
-    rel = rel.mean(axis=-1)
-    irrel = irrel.mean(axis=-1)
-#     rel, irrel = cd_generic(mods[-2:-1], rel, irrel)
-#     print(&#39;after avgpool&#39;)
-    
-    
-    
-#     print(rel.shape)
-#     rel = rel.flatten()
-#     irrel = irrel.flatten()
-    rel, irrel = cd_generic(mods[-1:], rel, irrel)
-    
-#     print(rel.shape)
+    # final things after BasicBlocks
+    rel, irrel = cd_generic(mods[-2:], rel, irrel)
     return rel, irrel</code></pre>
 </details>
 </dd>
@@ -464,6 +434,29 @@ In reality, one should use the loop contained in the above cd function</p></sect
     return relevant, irrelevant, scores</code></pre>
 </details>
 </dd>
+<dt id="acd.scores.cd_architecture_specific.tanh"><code class="name flex">
+<span>def <span class="ident">tanh</span></span>(<span>...)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>tanh(input, *, out=None) -&gt; Tensor</p>
+<p>Returns a new tensor with the hyperbolic tangent of the elements
+of :attr:<code>input</code>.</p>
+<p>[ \text{out}<em i>{i} = \tanh(\text{input}</em>) ]</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>input</code></strong> :&ensp;<code>Tensor</code></dt>
+<dd>the input tensor.</dd>
+</dl>
+<p>Keyword args:
+out (Tensor, optional): the output tensor.</p>
+<p>Example::</p>
+<pre><code>&gt;&gt;&gt; a = torch.randn(4)
+&gt;&gt;&gt; a
+tensor([ 0.8986, -0.7279,  1.1745,  0.2611])
+&gt;&gt;&gt; torch.tanh(a)
+tensor([ 0.7156, -0.6218,  0.8257,  0.2553])
+</code></pre></section>
+</dd>
 </dl>
 </section>
 <section>
@@ -485,6 +478,7 @@ In reality, one should use the loop contained in the above cd function</p></sect
 <li><code><a title="acd.scores.cd_architecture_specific.cd_propagate_mnist" href="#acd.scores.cd_architecture_specific.cd_propagate_mnist">cd_propagate_mnist</a></code></li>
 <li><code><a title="acd.scores.cd_architecture_specific.cd_propagate_resnet" href="#acd.scores.cd_architecture_specific.cd_propagate_resnet">cd_propagate_resnet</a></code></li>
 <li><code><a title="acd.scores.cd_architecture_specific.cd_track_vgg" href="#acd.scores.cd_architecture_specific.cd_track_vgg">cd_track_vgg</a></code></li>
+<li><code><a title="acd.scores.cd_architecture_specific.tanh" href="#acd.scores.cd_architecture_specific.tanh">tanh</a></code></li>
 </ul>
 </li>
 </ul>

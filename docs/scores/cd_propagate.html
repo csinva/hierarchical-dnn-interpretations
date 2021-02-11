@@ -29,29 +29,33 @@ import torch.nn.functional as F
 from copy import deepcopy
 import numpy as np
 from scipy.special import expit as sigmoid
+from torch import tanh
 
 
-def propagate_conv_linear(relevant, irrelevant, module, device=&#39;cuda&#39;):
+
+def propagate_conv_linear(relevant, irrelevant, module):
     &#39;&#39;&#39;Propagate convolutional or linear layer
     Apply linear part to both pieces
     Split bias based on the ratio of the absolute sums
     &#39;&#39;&#39;
+    device = relevant.device
     bias = module(torch.zeros(irrelevant.size()).to(device))
     rel = module(relevant) - bias
     irrel = module(irrelevant) - bias
 
     # elementwise proportional
-    prop_rel = torch.abs(rel)
-    prop_irrel = torch.abs(irrel)
+    prop_rel = torch.abs(rel) + 1e-20 # add a small constant so we don&#39;t divide by 0
+    prop_irrel = torch.abs(irrel) + 1e-20 # add a small constant so we don&#39;t divide by 0
     prop_sum = prop_rel + prop_irrel
     prop_rel = torch.div(prop_rel, prop_sum)
     prop_irrel = torch.div(prop_irrel, prop_sum)
     return rel + torch.mul(prop_rel, bias), irrel + torch.mul(prop_irrel, bias)
 
 
-def propagate_batchnorm2d(relevant, irrelevant, module, device=&#39;cuda&#39;):
+def propagate_batchnorm2d(relevant, irrelevant, module):
     &#39;&#39;&#39;Propagate batchnorm2d operation
     &#39;&#39;&#39;
+    device = relevant.device
     bias = module(torch.zeros(irrelevant.size()).to(device))
     rel = module(relevant) - bias
     irrel = module(irrelevant) - bias
@@ -72,7 +76,7 @@ def propagate_pooling(relevant, irrelevant, pooler):
     p.return_indices = True
     both, both_ind = p(relevant + irrelevant)
     
-    # pooling function
+    # unpooling function
     def unpool(tensor, indices):
         &#39;&#39;&#39;Unpool tensor given indices for pooling
         &#39;&#39;&#39;
@@ -86,10 +90,16 @@ def propagate_pooling(relevant, irrelevant, pooler):
     rel, irrel = unpool(relevant, both_ind), unpool(irrelevant, both_ind)
     return rel, irrel
 
+def propagate_independent(relevant, irrelevant, module):
+    &#39;&#39;&#39;use for things which operate independently
+    ex. avgpool, layer_norm, dropout
+    &#39;&#39;&#39;
+    return module(relevant), module(irrelevant)
 
-def propagate_relu(relevant, irrelevant, activation, device=&#39;cuda&#39;):
+def propagate_relu(relevant, irrelevant, activation):
     &#39;&#39;&#39;propagate ReLu nonlinearity
     &#39;&#39;&#39;
+    device = relevant.device
     swap_inplace = False
     try:  # handles inplace
         if activation.inplace:
@@ -103,13 +113,6 @@ def propagate_relu(relevant, irrelevant, activation, device=&#39;cuda&#39;):
     if swap_inplace:
         activation.inplace = True
     return rel_score, irrel_score
-
-
-def propagate_dropout(relevant, irrelevant, dropout):
-    &#39;&#39;&#39;propagate dropout operation
-    just applies dropout to each piece separately
-    &#39;&#39;&#39;
-    return dropout(relevant), dropout(irrelevant)
 
 
 def propagate_three(a, b, c, activation):
@@ -157,7 +160,99 @@ def propagate_basic_block(rel, irrel, module):
     irrel += irrel_identity
     rel, irrel = propagate_relu(rel, irrel, module.relu)  
     
-    return rel, irrel</code></pre>
+    return rel, irrel
+
+def propagate_lstm(x, module, start: int, stop: int, my_device=0):
+    &#39;&#39;&#39;module is an lstm layer
+    
+    Params
+    ------
+    module: lstm layer
+    x: torch.Tensor
+        (batch_size, seq_len, num_channels)
+        warning: default lstm uses shape (seq_len, batch_size, num_channels)
+    start: int
+        start of relevant sequence
+    stop: int
+        end of relevant sequence
+        
+    Returns
+    -------
+    rel, irrel: torch.Tensor
+        (batch_size, num_channels, num_hidden_lstm)
+    &#39;&#39;&#39;
+    
+    # extract out weights
+    W_ii, W_if, W_ig, W_io = torch.chunk(module.weight_ih_l0, 4, 0)
+    W_hi, W_hf, W_hg, W_ho = torch.chunk(module.weight_hh_l0, 4, 0)
+    b_i, b_f, b_g, b_o = torch.chunk(module.bias_ih_l0 + module.bias_hh_l0, 4)
+    
+    # prepare input x
+    x_orig = deepcopy(x)
+    x = x.permute(1, 2, 0) # convert to (seq_len, num_channels, batch_size)
+    seq_len = x.shape[0]
+    batch_size = x.shape[2]
+    output_dim = W_ho.shape[1]
+    relevant_h = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    irrelevant_h = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    prev_rel = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    prev_irrel = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    for i in range(seq_len):
+        prev_rel_h = relevant_h
+        prev_irrel_h = irrelevant_h
+        rel_i = torch.matmul(W_hi, prev_rel_h)
+        rel_g = torch.matmul(W_hg, prev_rel_h)
+        rel_f = torch.matmul(W_hf, prev_rel_h)
+        rel_o = torch.matmul(W_ho, prev_rel_h)
+        irrel_i = torch.matmul(W_hi, prev_irrel_h)
+        irrel_g = torch.matmul(W_hg, prev_irrel_h)
+        irrel_f = torch.matmul(W_hf, prev_irrel_h)
+        irrel_o = torch.matmul(W_ho, prev_irrel_h)
+
+        if i &gt;= start and i &lt;= stop:
+            rel_i = rel_i + torch.matmul(W_ii, x[i])
+            rel_g = rel_g + torch.matmul(W_ig, x[i])
+            rel_f = rel_f + torch.matmul(W_if, x[i])
+            rel_o = rel_o + torch.matmul(W_io, x[i])
+        else:
+            irrel_i = irrel_i + torch.matmul(W_ii, x[i])
+            irrel_g = irrel_g + torch.matmul(W_ig, x[i])
+            irrel_f = irrel_f + torch.matmul(W_if, x[i])
+            irrel_o = irrel_o + torch.matmul(W_io, x[i])
+
+        rel_contrib_i, irrel_contrib_i, bias_contrib_i = propagate_three(rel_i, irrel_i, b_i[:,None], sigmoid)
+        rel_contrib_g, irrel_contrib_g, bias_contrib_g = propagate_three(rel_g, irrel_g, b_g[:,None], tanh)
+
+        relevant = rel_contrib_i * (rel_contrib_g + bias_contrib_g) + bias_contrib_i * rel_contrib_g
+        irrelevant = irrel_contrib_i * (rel_contrib_g + irrel_contrib_g + bias_contrib_g) + (rel_contrib_i + bias_contrib_i) * irrel_contrib_g
+
+        if i &gt;= start and i &lt; stop:
+            relevant =relevant + bias_contrib_i * bias_contrib_g
+        else: 
+            irrelevant =irrelevant + bias_contrib_i * bias_contrib_g
+
+        if i &gt; 0: 
+            rel_contrib_f, irrel_contrib_f, bias_contrib_f = propagate_three(rel_f, irrel_f, b_f[:,None], sigmoid)
+            relevant = relevant +(rel_contrib_f + bias_contrib_f) * prev_rel
+            irrelevant = irrelevant+(rel_contrib_f + irrel_contrib_f + bias_contrib_f) * prev_irrel + irrel_contrib_f *  prev_rel
+
+        o = sigmoid(torch.matmul(W_io, x[i]) + torch.matmul(W_ho, prev_rel_h + prev_irrel_h) + b_o[:,None])     
+        new_rel_h, new_irrel_h = propagate_tanh_two(relevant, irrelevant)
+      
+        relevant_h = o * new_rel_h
+        irrelevant_h = o * new_irrel_h
+        prev_rel = relevant
+        prev_irrel = irrelevant
+
+#     outputs, (h1, c1) = module(x_orig)
+#     assert np.allclose((relevant_h + irrelevant_h).detach().numpy().flatten(),
+#                        h1.detach().numpy().flatten(), rtol=0.01)
+    
+    
+    # reshape output
+    rel_h = relevant_h.transpose(0, 1).unsqueeze(1)
+    irrel_h = irrelevant_h.transpose(0, 1).unsqueeze(1)
+    return rel_h, irrel_h</code></pre>
 </details>
 </section>
 <section>
@@ -223,7 +318,7 @@ out = self.relu(out)</p></section>
 </details>
 </dd>
 <dt id="acd.scores.cd_propagate.propagate_batchnorm2d"><code class="name flex">
-<span>def <span class="ident">propagate_batchnorm2d</span></span>(<span>relevant, irrelevant, module, device='cuda')</span>
+<span>def <span class="ident">propagate_batchnorm2d</span></span>(<span>relevant, irrelevant, module)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Propagate batchnorm2d operation</p></section>
@@ -231,9 +326,10 @@ out = self.relu(out)</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def propagate_batchnorm2d(relevant, irrelevant, module, device=&#39;cuda&#39;):
+<pre><code class="python">def propagate_batchnorm2d(relevant, irrelevant, module):
     &#39;&#39;&#39;Propagate batchnorm2d operation
     &#39;&#39;&#39;
+    device = relevant.device
     bias = module(torch.zeros(irrelevant.size()).to(device))
     rel = module(relevant) - bias
     irrel = module(irrelevant) - bias
@@ -248,7 +344,7 @@ out = self.relu(out)</p></section>
 </details>
 </dd>
 <dt id="acd.scores.cd_propagate.propagate_conv_linear"><code class="name flex">
-<span>def <span class="ident">propagate_conv_linear</span></span>(<span>relevant, irrelevant, module, device='cuda')</span>
+<span>def <span class="ident">propagate_conv_linear</span></span>(<span>relevant, irrelevant, module)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Propagate convolutional or linear layer
@@ -258,39 +354,159 @@ Split bias based on the ratio of the absolute sums</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def propagate_conv_linear(relevant, irrelevant, module, device=&#39;cuda&#39;):
+<pre><code class="python">def propagate_conv_linear(relevant, irrelevant, module):
     &#39;&#39;&#39;Propagate convolutional or linear layer
     Apply linear part to both pieces
     Split bias based on the ratio of the absolute sums
     &#39;&#39;&#39;
+    device = relevant.device
     bias = module(torch.zeros(irrelevant.size()).to(device))
     rel = module(relevant) - bias
     irrel = module(irrelevant) - bias
 
     # elementwise proportional
-    prop_rel = torch.abs(rel)
-    prop_irrel = torch.abs(irrel)
+    prop_rel = torch.abs(rel) + 1e-20 # add a small constant so we don&#39;t divide by 0
+    prop_irrel = torch.abs(irrel) + 1e-20 # add a small constant so we don&#39;t divide by 0
     prop_sum = prop_rel + prop_irrel
     prop_rel = torch.div(prop_rel, prop_sum)
     prop_irrel = torch.div(prop_irrel, prop_sum)
     return rel + torch.mul(prop_rel, bias), irrel + torch.mul(prop_irrel, bias)</code></pre>
 </details>
 </dd>
-<dt id="acd.scores.cd_propagate.propagate_dropout"><code class="name flex">
-<span>def <span class="ident">propagate_dropout</span></span>(<span>relevant, irrelevant, dropout)</span>
+<dt id="acd.scores.cd_propagate.propagate_independent"><code class="name flex">
+<span>def <span class="ident">propagate_independent</span></span>(<span>relevant, irrelevant, module)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>propagate dropout operation
-just applies dropout to each piece separately</p></section>
+<section class="desc"><p>use for things which operate independently
+ex. avgpool, layer_norm, dropout</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def propagate_dropout(relevant, irrelevant, dropout):
-    &#39;&#39;&#39;propagate dropout operation
-    just applies dropout to each piece separately
+<pre><code class="python">def propagate_independent(relevant, irrelevant, module):
+    &#39;&#39;&#39;use for things which operate independently
+    ex. avgpool, layer_norm, dropout
     &#39;&#39;&#39;
-    return dropout(relevant), dropout(irrelevant)</code></pre>
+    return module(relevant), module(irrelevant)</code></pre>
+</details>
+</dd>
+<dt id="acd.scores.cd_propagate.propagate_lstm"><code class="name flex">
+<span>def <span class="ident">propagate_lstm</span></span>(<span>x, module, start, stop, my_device=0)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>module is an lstm layer</p>
+<h2 id="params">Params</h2>
+<dl>
+<dt><strong><code>module</code></strong> :&ensp;<code>lstm</code> <code>layer</code></dt>
+<dd>&nbsp;</dd>
+<dt><strong><code>x</code></strong> :&ensp;<code>torch.Tensor</code></dt>
+<dd>(batch_size, seq_len, num_channels)
+warning: default lstm uses shape (seq_len, batch_size, num_channels)</dd>
+<dt><strong><code>start</code></strong> :&ensp;<code>int</code></dt>
+<dd>start of relevant sequence</dd>
+<dt><strong><code>stop</code></strong> :&ensp;<code>int</code></dt>
+<dd>end of relevant sequence</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>rel</code></strong>, <strong><code>irrel</code></strong> :&ensp;<code>torch.Tensor</code></dt>
+<dd>(batch_size, num_channels, num_hidden_lstm)</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def propagate_lstm(x, module, start: int, stop: int, my_device=0):
+    &#39;&#39;&#39;module is an lstm layer
+    
+    Params
+    ------
+    module: lstm layer
+    x: torch.Tensor
+        (batch_size, seq_len, num_channels)
+        warning: default lstm uses shape (seq_len, batch_size, num_channels)
+    start: int
+        start of relevant sequence
+    stop: int
+        end of relevant sequence
+        
+    Returns
+    -------
+    rel, irrel: torch.Tensor
+        (batch_size, num_channels, num_hidden_lstm)
+    &#39;&#39;&#39;
+    
+    # extract out weights
+    W_ii, W_if, W_ig, W_io = torch.chunk(module.weight_ih_l0, 4, 0)
+    W_hi, W_hf, W_hg, W_ho = torch.chunk(module.weight_hh_l0, 4, 0)
+    b_i, b_f, b_g, b_o = torch.chunk(module.bias_ih_l0 + module.bias_hh_l0, 4)
+    
+    # prepare input x
+    x_orig = deepcopy(x)
+    x = x.permute(1, 2, 0) # convert to (seq_len, num_channels, batch_size)
+    seq_len = x.shape[0]
+    batch_size = x.shape[2]
+    output_dim = W_ho.shape[1]
+    relevant_h = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    irrelevant_h = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    prev_rel = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    prev_irrel = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    for i in range(seq_len):
+        prev_rel_h = relevant_h
+        prev_irrel_h = irrelevant_h
+        rel_i = torch.matmul(W_hi, prev_rel_h)
+        rel_g = torch.matmul(W_hg, prev_rel_h)
+        rel_f = torch.matmul(W_hf, prev_rel_h)
+        rel_o = torch.matmul(W_ho, prev_rel_h)
+        irrel_i = torch.matmul(W_hi, prev_irrel_h)
+        irrel_g = torch.matmul(W_hg, prev_irrel_h)
+        irrel_f = torch.matmul(W_hf, prev_irrel_h)
+        irrel_o = torch.matmul(W_ho, prev_irrel_h)
+
+        if i &gt;= start and i &lt;= stop:
+            rel_i = rel_i + torch.matmul(W_ii, x[i])
+            rel_g = rel_g + torch.matmul(W_ig, x[i])
+            rel_f = rel_f + torch.matmul(W_if, x[i])
+            rel_o = rel_o + torch.matmul(W_io, x[i])
+        else:
+            irrel_i = irrel_i + torch.matmul(W_ii, x[i])
+            irrel_g = irrel_g + torch.matmul(W_ig, x[i])
+            irrel_f = irrel_f + torch.matmul(W_if, x[i])
+            irrel_o = irrel_o + torch.matmul(W_io, x[i])
+
+        rel_contrib_i, irrel_contrib_i, bias_contrib_i = propagate_three(rel_i, irrel_i, b_i[:,None], sigmoid)
+        rel_contrib_g, irrel_contrib_g, bias_contrib_g = propagate_three(rel_g, irrel_g, b_g[:,None], tanh)
+
+        relevant = rel_contrib_i * (rel_contrib_g + bias_contrib_g) + bias_contrib_i * rel_contrib_g
+        irrelevant = irrel_contrib_i * (rel_contrib_g + irrel_contrib_g + bias_contrib_g) + (rel_contrib_i + bias_contrib_i) * irrel_contrib_g
+
+        if i &gt;= start and i &lt; stop:
+            relevant =relevant + bias_contrib_i * bias_contrib_g
+        else: 
+            irrelevant =irrelevant + bias_contrib_i * bias_contrib_g
+
+        if i &gt; 0: 
+            rel_contrib_f, irrel_contrib_f, bias_contrib_f = propagate_three(rel_f, irrel_f, b_f[:,None], sigmoid)
+            relevant = relevant +(rel_contrib_f + bias_contrib_f) * prev_rel
+            irrelevant = irrelevant+(rel_contrib_f + irrel_contrib_f + bias_contrib_f) * prev_irrel + irrel_contrib_f *  prev_rel
+
+        o = sigmoid(torch.matmul(W_io, x[i]) + torch.matmul(W_ho, prev_rel_h + prev_irrel_h) + b_o[:,None])     
+        new_rel_h, new_irrel_h = propagate_tanh_two(relevant, irrelevant)
+      
+        relevant_h = o * new_rel_h
+        irrelevant_h = o * new_irrel_h
+        prev_rel = relevant
+        prev_irrel = irrelevant
+
+#     outputs, (h1, c1) = module(x_orig)
+#     assert np.allclose((relevant_h + irrelevant_h).detach().numpy().flatten(),
+#                        h1.detach().numpy().flatten(), rtol=0.01)
+    
+    
+    # reshape output
+    rel_h = relevant_h.transpose(0, 1).unsqueeze(1)
+    irrel_h = irrelevant_h.transpose(0, 1).unsqueeze(1)
+    return rel_h, irrel_h</code></pre>
 </details>
 </dd>
 <dt id="acd.scores.cd_propagate.propagate_pooling"><code class="name flex">
@@ -310,7 +526,7 @@ just applies dropout to each piece separately</p></section>
     p.return_indices = True
     both, both_ind = p(relevant + irrelevant)
     
-    # pooling function
+    # unpooling function
     def unpool(tensor, indices):
         &#39;&#39;&#39;Unpool tensor given indices for pooling
         &#39;&#39;&#39;
@@ -326,7 +542,7 @@ just applies dropout to each piece separately</p></section>
 </details>
 </dd>
 <dt id="acd.scores.cd_propagate.propagate_relu"><code class="name flex">
-<span>def <span class="ident">propagate_relu</span></span>(<span>relevant, irrelevant, activation, device='cuda')</span>
+<span>def <span class="ident">propagate_relu</span></span>(<span>relevant, irrelevant, activation)</span>
 </code></dt>
 <dd>
 <section class="desc"><p>propagate ReLu nonlinearity</p></section>
@@ -334,9 +550,10 @@ just applies dropout to each piece separately</p></section>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def propagate_relu(relevant, irrelevant, activation, device=&#39;cuda&#39;):
+<pre><code class="python">def propagate_relu(relevant, irrelevant, activation):
     &#39;&#39;&#39;propagate ReLu nonlinearity
     &#39;&#39;&#39;
+    device = relevant.device
     swap_inplace = False
     try:  # handles inplace
         if activation.inplace:
@@ -384,6 +601,29 @@ just applies dropout to each piece separately</p></section>
     return a_contrib, b_contrib, activation(c)</code></pre>
 </details>
 </dd>
+<dt id="acd.scores.cd_propagate.tanh"><code class="name flex">
+<span>def <span class="ident">tanh</span></span>(<span>...)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>tanh(input, *, out=None) -&gt; Tensor</p>
+<p>Returns a new tensor with the hyperbolic tangent of the elements
+of :attr:<code>input</code>.</p>
+<p>[ \text{out}<em i>{i} = \tanh(\text{input}</em>) ]</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>input</code></strong> :&ensp;<code>Tensor</code></dt>
+<dd>the input tensor.</dd>
+</dl>
+<p>Keyword args:
+out (Tensor, optional): the output tensor.</p>
+<p>Example::</p>
+<pre><code>&gt;&gt;&gt; a = torch.randn(4)
+&gt;&gt;&gt; a
+tensor([ 0.8986, -0.7279,  1.1745,  0.2611])
+&gt;&gt;&gt; torch.tanh(a)
+tensor([ 0.7156, -0.6218,  0.8257,  0.2553])
+</code></pre></section>
+</dd>
 </dl>
 </section>
 <section>
@@ -405,11 +645,13 @@ just applies dropout to each piece separately</p></section>
 <li><code><a title="acd.scores.cd_propagate.propagate_basic_block" href="#acd.scores.cd_propagate.propagate_basic_block">propagate_basic_block</a></code></li>
 <li><code><a title="acd.scores.cd_propagate.propagate_batchnorm2d" href="#acd.scores.cd_propagate.propagate_batchnorm2d">propagate_batchnorm2d</a></code></li>
 <li><code><a title="acd.scores.cd_propagate.propagate_conv_linear" href="#acd.scores.cd_propagate.propagate_conv_linear">propagate_conv_linear</a></code></li>
-<li><code><a title="acd.scores.cd_propagate.propagate_dropout" href="#acd.scores.cd_propagate.propagate_dropout">propagate_dropout</a></code></li>
+<li><code><a title="acd.scores.cd_propagate.propagate_independent" href="#acd.scores.cd_propagate.propagate_independent">propagate_independent</a></code></li>
+<li><code><a title="acd.scores.cd_propagate.propagate_lstm" href="#acd.scores.cd_propagate.propagate_lstm">propagate_lstm</a></code></li>
 <li><code><a title="acd.scores.cd_propagate.propagate_pooling" href="#acd.scores.cd_propagate.propagate_pooling">propagate_pooling</a></code></li>
 <li><code><a title="acd.scores.cd_propagate.propagate_relu" href="#acd.scores.cd_propagate.propagate_relu">propagate_relu</a></code></li>
 <li><code><a title="acd.scores.cd_propagate.propagate_tanh_two" href="#acd.scores.cd_propagate.propagate_tanh_two">propagate_tanh_two</a></code></li>
 <li><code><a title="acd.scores.cd_propagate.propagate_three" href="#acd.scores.cd_propagate.propagate_three">propagate_three</a></code></li>
+<li><code><a title="acd.scores.cd_propagate.tanh" href="#acd.scores.cd_propagate.tanh">tanh</a></code></li>
 </ul>
 </li>
 </ul>

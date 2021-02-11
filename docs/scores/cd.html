@@ -37,19 +37,20 @@ def cd(im_torch: torch.Tensor, model, mask=None, model_type=None, device=&#39;cu
     
     Params
     ------
+    im_torch: torch.Tensor
+        example to interpret - usually has shape (batch_size, num_channels, height, width)
+    model: pytorch model        
     mask: array_like (values in {0, 1})
         required unless transform is supplied
         array with 1s marking the locations of relevant pixels, 0s marking the background
-        shape should match the shape of im_torch or just H x W
-    im_torch: torch.Tensor
-        example to interpret - usually has shape (batch_size, num_channels, height, width)
+        shape should match the shape of im_torch or just H x W        
     model_type: str, optional
         usually should just leave this blank
         if this is == &#39;mnist&#39;, uses CD for a specific mnist model
         if this is == &#39;resnet18&#39;, uses resnet18 model
     device: str, optional
     transform: function
-        transform should be a function which transforms the original image
+        transform should be a function which transforms the original image to specify rel
         only used if mask is not passed
         
     Returns
@@ -59,9 +60,9 @@ def cd(im_torch: torch.Tensor, model, mask=None, model_type=None, device=&#39;cu
     irrelevant: torch.Tensor
         class-wise scores for everything but the relevant mask 
     &#39;&#39;&#39;
-    
     # set up model
     model.eval()
+    model = model.to(device)
     im_torch = im_torch.to(device)
     
     # set up masks
@@ -79,13 +80,16 @@ def cd(im_torch: torch.Tensor, model, mask=None, model_type=None, device=&#39;cu
     relevant = relevant.to(device)
     irrelevant = irrelevant.to(device)
 
+    # deal with specific architectures which have problems
     if model_type == &#39;mnist&#39;:
         return cd_propagate_mnist(relevant, irrelevant, model)
     elif model_type == &#39;resnet18&#39;:
         return cd_propagate_resnet(relevant, irrelevant, model)
     
-    mods = list(model.modules())
-    relevant, irrelevant = cd_generic(mods, relevant, irrelevant)
+    # try the generic case
+    else:
+        mods = list(model.modules())
+        relevant, irrelevant = cd_generic(mods, relevant, irrelevant)
     return relevant, irrelevant
 
 def cd_generic(mods, relevant, irrelevant):
@@ -102,10 +106,11 @@ def cd_generic(mods, relevant, irrelevant):
             relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mod)
         elif &#39;ReLU&#39; in t:
             relevant, irrelevant = propagate_relu(relevant, irrelevant, mod)
-        elif &#39;Pool&#39; in t:
+        elif &#39;AvgPool&#39; in t or &#39;NormLayer&#39; in t or &#39;Dropout&#39; in t \
+             or &#39;ReshapeLayer&#39; in t or (&#39;modularize&#39; in t and &#39;Transform&#39; in t): # custom layers
+            relevant, irrelevant = propagate_independent(relevant, irrelevant, mod)
+        elif &#39;Pool&#39; in t and not &#39;AvgPool&#39; in t:
             relevant, irrelevant = propagate_pooling(relevant, irrelevant, mod)
-        elif &#39;Dropout&#39; in t:
-            relevant, irrelevant = propagate_dropout(relevant, irrelevant, mod)
         elif &#39;BatchNorm2d&#39; in t:
             relevant, irrelevant = propagate_batchnorm2d(relevant, irrelevant, mod)
     return relevant, irrelevant
@@ -219,12 +224,14 @@ def cd_text(batch, model, start, stop, return_irrel_scores=False):
 <section class="desc"><p>Get contextual decomposition scores for blob</p>
 <h2 id="params">Params</h2>
 <dl>
+<dt><strong><code>im_torch</code></strong> :&ensp;<code>torch.Tensor</code></dt>
+<dd>example to interpret - usually has shape (batch_size, num_channels, height, width)</dd>
+<dt><strong><code>model</code></strong> :&ensp;<code>pytorch</code> <code>model</code></dt>
+<dd>&nbsp;</dd>
 <dt><strong><code>mask</code></strong> :&ensp;<code>array_like</code> (<code>values</code> <code>in</code> {<code>0</code>, <code>1</code>})</dt>
 <dd>required unless transform is supplied
 array with 1s marking the locations of relevant pixels, 0s marking the background
 shape should match the shape of im_torch or just H x W</dd>
-<dt><strong><code>im_torch</code></strong> :&ensp;<code>torch.Tensor</code></dt>
-<dd>example to interpret - usually has shape (batch_size, num_channels, height, width)</dd>
 <dt><strong><code>model_type</code></strong> :&ensp;<code>str</code>, optional</dt>
 <dd>usually should just leave this blank
 if this is == 'mnist', uses CD for a specific mnist model
@@ -232,7 +239,7 @@ if this is == 'resnet18', uses resnet18 model</dd>
 <dt><strong><code>device</code></strong> :&ensp;<code>str</code>, optional</dt>
 <dd>&nbsp;</dd>
 <dt><strong><code>transform</code></strong> :&ensp;<code>function</code></dt>
-<dd>transform should be a function which transforms the original image
+<dd>transform should be a function which transforms the original image to specify rel
 only used if mask is not passed</dd>
 </dl>
 <h2 id="returns">Returns</h2>
@@ -251,19 +258,20 @@ only used if mask is not passed</dd>
     
     Params
     ------
+    im_torch: torch.Tensor
+        example to interpret - usually has shape (batch_size, num_channels, height, width)
+    model: pytorch model        
     mask: array_like (values in {0, 1})
         required unless transform is supplied
         array with 1s marking the locations of relevant pixels, 0s marking the background
-        shape should match the shape of im_torch or just H x W
-    im_torch: torch.Tensor
-        example to interpret - usually has shape (batch_size, num_channels, height, width)
+        shape should match the shape of im_torch or just H x W        
     model_type: str, optional
         usually should just leave this blank
         if this is == &#39;mnist&#39;, uses CD for a specific mnist model
         if this is == &#39;resnet18&#39;, uses resnet18 model
     device: str, optional
     transform: function
-        transform should be a function which transforms the original image
+        transform should be a function which transforms the original image to specify rel
         only used if mask is not passed
         
     Returns
@@ -273,9 +281,9 @@ only used if mask is not passed</dd>
     irrelevant: torch.Tensor
         class-wise scores for everything but the relevant mask 
     &#39;&#39;&#39;
-    
     # set up model
     model.eval()
+    model = model.to(device)
     im_torch = im_torch.to(device)
     
     # set up masks
@@ -293,13 +301,16 @@ only used if mask is not passed</dd>
     relevant = relevant.to(device)
     irrelevant = irrelevant.to(device)
 
+    # deal with specific architectures which have problems
     if model_type == &#39;mnist&#39;:
         return cd_propagate_mnist(relevant, irrelevant, model)
     elif model_type == &#39;resnet18&#39;:
         return cd_propagate_resnet(relevant, irrelevant, model)
     
-    mods = list(model.modules())
-    relevant, irrelevant = cd_generic(mods, relevant, irrelevant)
+    # try the generic case
+    else:
+        mods = list(model.modules())
+        relevant, irrelevant = cd_generic(mods, relevant, irrelevant)
     return relevant, irrelevant</code></pre>
 </details>
 </dd>
@@ -327,10 +338,11 @@ based on the layer name</p></section>
             relevant, irrelevant = propagate_conv_linear(relevant, irrelevant, mod)
         elif &#39;ReLU&#39; in t:
             relevant, irrelevant = propagate_relu(relevant, irrelevant, mod)
-        elif &#39;Pool&#39; in t:
+        elif &#39;AvgPool&#39; in t or &#39;NormLayer&#39; in t or &#39;Dropout&#39; in t \
+             or &#39;ReshapeLayer&#39; in t or (&#39;modularize&#39; in t and &#39;Transform&#39; in t): # custom layers
+            relevant, irrelevant = propagate_independent(relevant, irrelevant, mod)
+        elif &#39;Pool&#39; in t and not &#39;AvgPool&#39; in t:
             relevant, irrelevant = propagate_pooling(relevant, irrelevant, mod)
-        elif &#39;Dropout&#39; in t:
-            relevant, irrelevant = propagate_dropout(relevant, irrelevant, mod)
         elif &#39;BatchNorm2d&#39; in t:
             relevant, irrelevant = propagate_batchnorm2d(relevant, irrelevant, mod)
     return relevant, irrelevant</code></pre>
@@ -451,6 +463,29 @@ stop: int
     return scores</code></pre>
 </details>
 </dd>
+<dt id="acd.scores.cd.tanh"><code class="name flex">
+<span>def <span class="ident">tanh</span></span>(<span>...)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>tanh(input, *, out=None) -&gt; Tensor</p>
+<p>Returns a new tensor with the hyperbolic tangent of the elements
+of :attr:<code>input</code>.</p>
+<p>[ \text{out}<em i>{i} = \tanh(\text{input}</em>) ]</p>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>input</code></strong> :&ensp;<code>Tensor</code></dt>
+<dd>the input tensor.</dd>
+</dl>
+<p>Keyword args:
+out (Tensor, optional): the output tensor.</p>
+<p>Example::</p>
+<pre><code>&gt;&gt;&gt; a = torch.randn(4)
+&gt;&gt;&gt; a
+tensor([ 0.8986, -0.7279,  1.1745,  0.2611])
+&gt;&gt;&gt; torch.tanh(a)
+tensor([ 0.7156, -0.6218,  0.8257,  0.2553])
+</code></pre></section>
+</dd>
 </dl>
 </section>
 <section>
@@ -472,6 +507,7 @@ stop: int
 <li><code><a title="acd.scores.cd.cd" href="#acd.scores.cd.cd">cd</a></code></li>
 <li><code><a title="acd.scores.cd.cd_generic" href="#acd.scores.cd.cd_generic">cd_generic</a></code></li>
 <li><code><a title="acd.scores.cd.cd_text" href="#acd.scores.cd.cd_text">cd_text</a></code></li>
+<li><code><a title="acd.scores.cd.tanh" href="#acd.scores.cd.tanh">tanh</a></code></li>
 </ul>
 </li>
 </ul>

@@ -177,12 +177,14 @@ def get_scores_1d(batch, model, method, label, only_one, score_orig, text_orig, 
     else:
         return scores[:, label]
 
-def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type=&#39;mnist&#39;, device=&#39;cuda&#39;):
+def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type=None, device=&#39;cuda&#39;):
     &#39;&#39;&#39;Return attribution scores for 2D input
     Params
     ------
     method: str
         What type of method to use for attribution (e.g. cd, occlusion)
+    ims: np.ndarray (1 x C x H x W )
+        Tiles to pass as masks to cd
         
     Returns
     -------
@@ -191,15 +193,16 @@ def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type=&
     &#39;&#39;&#39;
     scores = []
     if method == &#39;cd&#39;:
-        for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches
-            scores.append(cd(im_torch, model, np.expand_dims(ims[i], 0), model_type, device=device)[0].data.cpu().numpy())
+        for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
+            scores.append(cd(im_torch, model, np.expand_dims(ims[i], 0), model_type, 
+                             device=device)[0].data.cpu().numpy())
         scores = np.squeeze(np.array(scores))
     elif method == &#39;build_up&#39;:
-        for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches
+        for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
             scores.append(pred_ims(model, ims[i])[0])
         scores = np.squeeze(np.array(scores))
     elif method == &#39;occlusion&#39;:
-        for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches
+        for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
             scores.append(pred_ims(model, ims[i])[0])
         scores = -1 * np.squeeze(np.array(scores))
     if scores.ndim == 1:
@@ -292,7 +295,7 @@ Params</p>
 </details>
 </dd>
 <dt id="acd.scores.score_funcs.get_scores_2d"><code class="name flex">
-<span>def <span class="ident">get_scores_2d</span></span>(<span>model, method, ims, im_torch=None, pred_ims=None, model_type='mnist', device='cuda')</span>
+<span>def <span class="ident">get_scores_2d</span></span>(<span>model, method, ims, im_torch=None, pred_ims=None, model_type=None, device='cuda')</span>
 </code></dt>
 <dd>
 <section class="desc"><p>Return attribution scores for 2D input
@@ -301,6 +304,8 @@ Params</p>
 <dl>
 <dt><strong><code>method</code></strong> :&ensp;<code>str</code></dt>
 <dd>What type of method to use for attribution (e.g. cd, occlusion)</dd>
+<dt><strong><code>ims</code></strong> :&ensp;<code>np.ndarray</code> (<code>1</code> <code>x</code> <code>C</code> <code>x</code> <code>H</code> <code>x</code> <code>W</code> )</dt>
+<dd>Tiles to pass as masks to cd</dd>
 </dl>
 <h2 id="returns">Returns</h2>
 <dl>
@@ -311,12 +316,14 @@ Params</p>
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type=&#39;mnist&#39;, device=&#39;cuda&#39;):
+<pre><code class="python">def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type=None, device=&#39;cuda&#39;):
     &#39;&#39;&#39;Return attribution scores for 2D input
     Params
     ------
     method: str
         What type of method to use for attribution (e.g. cd, occlusion)
+    ims: np.ndarray (1 x C x H x W )
+        Tiles to pass as masks to cd
         
     Returns
     -------
@@ -325,15 +332,16 @@ Params</p>
     &#39;&#39;&#39;
     scores = []
     if method == &#39;cd&#39;:
-        for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches
-            scores.append(cd(im_torch, model, np.expand_dims(ims[i], 0), model_type, device=device)[0].data.cpu().numpy())
+        for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
+            scores.append(cd(im_torch, model, np.expand_dims(ims[i], 0), model_type, 
+                             device=device)[0].data.cpu().numpy())
         scores = np.squeeze(np.array(scores))
     elif method == &#39;build_up&#39;:
-        for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches
+        for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
             scores.append(pred_ims(model, ims[i])[0])
         scores = np.squeeze(np.array(scores))
     elif method == &#39;occlusion&#39;:
-        for i in tqdm(range(ims.shape[0])):  # can use tqdm here, need to use batches
+        for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
             scores.append(pred_ims(model, ims[i])[0])
         scores = -1 * np.squeeze(np.array(scores))
     if scores.ndim == 1:

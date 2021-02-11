@@ -1,6 +1,22 @@
-Official code for using / reproducing ACD from the paper *Hierarchical interpretations for neural network predictions* (ICLR 2019 [pdf](https://openreview.net/pdf?id=SkEqro0ctQ)). This code produces hierarchical interpretations for a single prediction made by a neural network.
+<h1 align="center"> Hierarchical neural-net interpretations (ACD) 🧠</h1>
 
-*Note: this repo is actively maintained. For any questions please file an issue.*
+<p align="center"> Produces hierarchical interpretations for a single prediction made by a pytorch neural network. Official code for <i>Hierarchical interpretations for neural network predictions</i> (ICLR 2019 <a href="https://openreview.net/pdf?id=SkEqro0ctQ">pdf</a>). </p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/license-mit-blue.svg">
+  <img src="https://img.shields.io/badge/python-3.6--3.8-blue">
+  <img src="https://img.shields.io/github/checks-status/csinva/hierarchical-dnn-interpretations/master">
+  <img src="https://img.shields.io/pypi/v/acd?color=orange">
+  <img src="https://static.pepy.tech/personalized-badge/acd?period=total&units=none&left_color=gray&right_color=orange&left_text=downloads">
+</p>  
+<p align="center">
+	<a href="https://csinva.io/hierarchical-dnn-interpretations/">Documentation</a>
+  <a href="https://github.com/csinva/hierarchical-dnn-interpretations/tree/master/reproduce_figs">Examples</a>
+</p>  
+<p align="center">
+	<i>Note: this repo is actively maintained. For any questions please file an issue.</i>
+</p>
+
 
 ![](https://csinva.io/hierarchical-dnn-interpretations/reproduce_figs/figs/intro.svg?sanitize=True)
 
@@ -9,11 +25,10 @@ Official code for using / reproducing ACD from the paper *Hierarchical interpret
 # examples/documentation
 
 - **installation**: `pip install acd` (or clone and run `python setup.py install`)
-- **examples**: the [reproduce_figs](reproduce_figs) folder has notebooks with many demos
-- **api**: the [api](https://csinva.github.io/hierarchical-dnn-interpretations/docs/acd/) gives a list of available functions
+- **examples**: the [reproduce_figs](https://github.com/csinva/hierarchical-dnn-interpretations/tree/master/reproduce_figs) folder has notebooks with many demos
 - **src**: the [acd](acd) folder contains the source for the method implementation
 - allows for different types of interpretations by changing hyperparameters (explained in examples)
-- tested with python3 and pytorch >1.0 with/without gpu 
+- test with pytorch >1.0 with/without gpu 
 - all required data/models/code for reproducing are included in the [dsets](dsets) folder
 
 | Inspecting NLP sentiment models    | Detecting adversarial examples      | Analyzing imagenet models           |
@@ -41,7 +56,7 @@ Official code for using / reproducing ACD from the paper *Hierarchical interpret
 
  ```r
 @inproceedings{
-    singh2018hierarchical,
+    singh2019hierarchical,
     title={Hierarchical interpretations for neural network predictions},
     author={Chandan Singh and W. James Murdoch and Bin Yu},
     booktitle={International Conference on Learning Representations},

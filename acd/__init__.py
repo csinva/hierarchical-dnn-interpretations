@@ -1,4 +1,5 @@
 '''Module for computing hierarchical interpretations of neural network predictions
+.. include:: ../readme.md
 '''
 
 from .scores.cd import *
