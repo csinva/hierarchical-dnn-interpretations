@@ -6,7 +6,7 @@ with open("readme.md", "r") as fh:
 
 setup(
     name='acd',
-    version='0.0.1',
+    version='0.0.2',
     author="Chandan Singh",
     description="Hierarchical interpretatations and contextual decomposition in pytorch",
     long_description=long_description,
