@@ -1,14 +1,12 @@
-import numpy as np
 from math import ceil
 
-
-def combine_tiles(tile1, tile2, method='cd'):
-    if not method == 'occlusion':
-        return tile1 + tile2
+import numpy as np
 
 
 def gen_tiles(image, fill=0, method='occlusion', prev_im=None,
               sweep_dim=1, num_ims=None, im_num_start=0):
+    '''Generate all possible tilings given a granularity of sweep_dim and for a particular method
+    '''
     R = image.shape[0]
     C = image.shape[1]
 
@@ -97,9 +95,9 @@ def gen_tiles_around_baseline(im_orig, comp_tile, fill=0,
     return np.array(ims), idxs
 
 
-# generates full-size tile from comp which could be downsampled
-# todo: upsample for things that aren't cd
 def gen_tile_from_comp(im_orig, comp_tile_downsampled, sweep_dim, method, fill=0):
+    '''generates full-size tile from comp which could be downsampled
+    '''
     R = im_orig.shape[0]
     C = im_orig.shape[1]
     if method == 'occlusion':
@@ -129,3 +127,8 @@ def gen_tile_from_comp(im_orig, comp_tile_downsampled, sweep_dim, method, fill=0
                 if comp_tile_downsampled[r, c]:
                     im[r * sweep_dim: (r + 1) * sweep_dim, c * sweep_dim: (c + 1) * sweep_dim] = 1
     return im
+
+
+def combine_tiles(tile1, tile2, method='cd'):
+    if not method == 'occlusion':
+        return tile1 + tile2

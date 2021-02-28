@@ -24,113 +24,40 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import sys
-import numpy as np
-from ..util import tiling_2d as tiling
-from ..scores.cd import cd, cd_text
-from skimage import measure  # for connected components
+<pre><code class="python">from copy import deepcopy
 from math import ceil
+
+import numpy as np
 from scipy.signal import convolve2d
-from copy import deepcopy
+from skimage import measure  # for connected components
+
 from ..scores import score_funcs
+from ..util import tiling_2d as tiling
+
+# cross-shaped filter used to select a pixel when 3 of its neighbors are selected
+FILT = np.zeros((3, 3))
+FILT[:, 1] = 1  # middle column
+FILT[1, :] = 1  # middle row
 
 
-# score doesn&#39;t have to just be prediction for label
-def refine_scores(scores, lab_num):
-    return scores[:, lab_num]
-
-
-# higher scores are more likely to be picked
-def threshold_scores(scores, percentile_include, method):
-    X = scores
-
-    # pick more when more is already picked
-    num_picked = np.sum(np.isnan(scores))
-    if num_picked &gt; scores.size / 3:
-        percentile_include -= 15
-
-    thresh = np.nanpercentile(X, percentile_include)
-    #     thresh = np.max(X) # pick only 1 pixel at a time
-    im_thresh = np.logical_and(scores &gt;= thresh, ~np.isnan(scores))
-    # scores &gt;= thresh #np.logical_and(scores &gt;= thresh, scores != 0)
-
-    # make sure we pick something
-    while np.sum(im_thresh) == 0:
-        percentile_include -= 4
-        thresh = np.nanpercentile(X, percentile_include)
-        #     thresh = np.max(X) # pick only 1 pixel at a time
-        im_thresh = np.logical_and(scores &gt;= thresh, ~np.isnan(scores))
-        # np.logical_and(scores &gt;= thresh, scores != 0)
-    return im_thresh
-
-
-# if 3 sides of a pixel are selected, also select the pixel
-filt = np.zeros((3, 3))
-filt[:, 1] = 1  # middle column
-filt[1, :] = 1  # middle row
-
-
-def smooth_im_thresh(im_thresh_old, im_thresh):
-    im = im_thresh_old + im_thresh
-    im_count_neighbors = convolve2d(im, filt, mode=&#39;same&#39;)
-    pixels_to_add = np.logical_and(np.logical_not(im), im_count_neighbors &gt;= 3)
-    return im + pixels_to_add
-
-
-# establish correspondence between segs
-def establish_correspondence(seg1, seg2):
-    seg_out = np.zeros(seg1.shape, dtype=&#39;int64&#39;)
-    new_counter = 0
-
-    num_segs = int(np.max(seg2))
-    remaining = list(range(1, 12))  # only have 10 colors though
-    for i in range(1, num_segs + 1):
-        seg = seg2 == i
-        old_seg = seg1[seg]
-        matches = np.unique(old_seg[old_seg != 0])
-        num_matches = matches.size
-
-        # new seg
-        if num_matches == 0:
-            new_counter -= 1
-            seg_out[seg] = new_counter
-
-        # 1 match
-        elif num_matches == 1:
-            seg_out[seg] = matches[0]
-            remaining.remove(matches[0])
-
-        # &gt;1 matches (segs merged)
-        else:
-            seg_out[seg] = min(matches)
-            remaining.remove(min(matches))
-
-    # assign new segs    
-    while new_counter &lt; 0:
-        seg_out[seg_out == new_counter] = min(remaining)
-        remaining.remove(min(remaining))
-        new_counter += 1
-
-    return seg_out  # seg2
-
-
-# agglomerate - black out selected pixels from before and resweep over the entire image
 def agglomerate(model, pred_ims, percentile_include, method, sweep_dim,
                 im_orig, lab_num, num_iters=5, im_torch=None, model_type=&#39;mnist&#39;, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;Starting from fine-grained units, generate scores for hierarchy of 2d inputs for a particular image
+    &#39;&#39;&#39;
     # set up shapes
     R = im_orig.shape[0]
     C = im_orig.shape[1]
     size_downsampled = (ceil(R / sweep_dim), ceil(C / sweep_dim))  # effectively downsampled
 
-    # get scores
-    tiles = tiling.gen_tiles(im_orig, fill=0, method=method, sweep_dim=sweep_dim)
+    # get scores for each starting unit
+    tiles = tiling.gen_tiles(im_orig, fill=0, method=method, sweep_dim=sweep_dim)  # masks each individual unit
     scores_orig_raw = score_funcs.get_scores_2d(model, method, ims=tiles, im_torch=im_torch,
                                                 pred_ims=pred_ims, model_type=model_type, device=device)
     scores_track = np.copy(refine_scores(scores_orig_raw, lab_num)).reshape(
         size_downsampled)  # keep track of these scores
 
     # threshold im
-    im_thresh = threshold_scores(scores_track, percentile_include, method)
+    im_thresh = threshold_scores(scores_track, percentile_include)
 
     # initialize lists
     scores_list = [np.copy(scores_track)]
@@ -158,15 +85,13 @@ def agglomerate(model, pred_ims, percentile_include, method, sweep_dim,
         # find connected components for regions
         comps = np.copy(measure.label(im_thresh_list[-1], background=0, connectivity=2))
 
-        # establish correspondence
+        # establish correspondence with components from previous iteration
         if step &gt; 0:
             comps_orig = np.copy(comps)
             try:
                 comps = establish_correspondence(comps_list[-1], comps_orig)
             except:
                 comps = comps_orig
-        # plt.imshow(comps)
-        # plt.show()
 
         comp_tiles = {}  # stores tiles corresponding to each tile
         if not method == &#39;cd&#39;:
@@ -219,7 +144,7 @@ def agglomerate(model, pred_ims, percentile_include, method, sweep_dim,
 
         # get class preds and thresholded image
         scores_track[im_thresh_list[-1]] = np.nan
-        im_thresh = threshold_scores(scores_track, percentile_include, method)
+        im_thresh = threshold_scores(scores_track, percentile_include)
         im_thresh_smoothed = smooth_im_thresh(im_thresh_list[-1], im_thresh)
 
         # add to lists
@@ -246,9 +171,85 @@ def agglomerate(model, pred_ims, percentile_include, method, sweep_dim,
     return lists
 
 
-# agglomerate the final blobs
+def refine_scores(scores, lab_num):
+    &#39;&#39;&#39;How to convert scores to meaningful metric
+    &#39;&#39;&#39;
+    return scores[:, lab_num]
+
+
+# higher scores are more likely to be picked
+def threshold_scores(scores, percentile_include):
+    # pick more when more is already picked
+    num_picked = np.sum(np.isnan(scores))
+    if num_picked &gt; scores.size / 3:
+        percentile_include -= 15
+
+    thresh = np.nanpercentile(scores, percentile_include)
+    #     thresh = np.max(X) # pick only 1 pixel at a time
+    im_thresh = np.logical_and(scores &gt;= thresh, ~np.isnan(scores))
+    # scores &gt;= thresh #np.logical_and(scores &gt;= thresh, scores != 0)
+
+    # make sure we pick something
+    while np.sum(im_thresh) == 0:
+        percentile_include -= 4
+        thresh = np.nanpercentile(scores, percentile_include)
+        #     thresh = np.max(X) # pick only 1 pixel at a time
+        im_thresh = np.logical_and(scores &gt;= thresh, ~np.isnan(scores))
+        # np.logical_and(scores &gt;= thresh, scores != 0)
+    return im_thresh
+
+
+def smooth_im_thresh(im_thresh_old, im_thresh):
+    &#39;&#39;&#39;Bias towards picking smoother components
+    &#39;&#39;&#39;
+    im = im_thresh_old + im_thresh
+    im_count_neighbors = convolve2d(im, FILT, mode=&#39;same&#39;)
+    pixels_to_add = np.logical_and(np.logical_not(im), im_count_neighbors &gt;= 3)
+    return im + pixels_to_add
+
+
+def establish_correspondence(seg1, seg2):
+    &#39;&#39;&#39;Establish correspondence between 2 segmentations of an image
+    &#39;&#39;&#39;
+    seg_out = np.zeros(seg1.shape, dtype=&#39;int64&#39;)
+    new_counter = 0
+
+    num_segs = int(np.max(seg2))
+    remaining = list(range(1, 12))  # only have 10 colors though
+    for i in range(1, num_segs + 1):
+        seg = seg2 == i
+        old_seg = seg1[seg]
+        matches = np.unique(old_seg[old_seg != 0])
+        num_matches = matches.size
+
+        # new seg
+        if num_matches == 0:
+            new_counter -= 1
+            seg_out[seg] = new_counter
+
+        # 1 match
+        elif num_matches == 1:
+            seg_out[seg] = matches[0]
+            remaining.remove(matches[0])
+
+        # &gt;1 matches (segs merged)
+        else:
+            seg_out[seg] = min(matches)
+            remaining.remove(min(matches))
+
+    # assign new segs    
+    while new_counter &lt; 0:
+        seg_out[seg_out == new_counter] = min(remaining)
+        remaining.remove(min(remaining))
+        new_counter += 1
+
+    return seg_out  # seg2
+
+
 def agglomerate_final(lists, model, pred_ims, percentile_include, method, sweep_dim,
                       im_orig, lab_num, num_iters=5, im_torch=None, model_type=&#39;mnist&#39;):
+    &#39;&#39;&#39;Postprocess the final segmentation by joining the remaining segments
+    &#39;&#39;&#39;
     # while multiple types of blobs
     while (np.unique(lists[&#39;comps_list&#39;][-1]).size &gt; 2):
         #     for q in range(3):
@@ -326,27 +327,29 @@ def agglomerate_final(lists, model, pred_ims, percentile_include, method, sweep_
 <span>def <span class="ident">agglomerate</span></span>(<span>model, pred_ims, percentile_include, method, sweep_dim, im_orig, lab_num, num_iters=5, im_torch=None, model_type='mnist', device='cuda')</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Starting from fine-grained units, generate scores for hierarchy of 2d inputs for a particular image</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def agglomerate(model, pred_ims, percentile_include, method, sweep_dim,
                 im_orig, lab_num, num_iters=5, im_torch=None, model_type=&#39;mnist&#39;, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;Starting from fine-grained units, generate scores for hierarchy of 2d inputs for a particular image
+    &#39;&#39;&#39;
     # set up shapes
     R = im_orig.shape[0]
     C = im_orig.shape[1]
     size_downsampled = (ceil(R / sweep_dim), ceil(C / sweep_dim))  # effectively downsampled
 
-    # get scores
-    tiles = tiling.gen_tiles(im_orig, fill=0, method=method, sweep_dim=sweep_dim)
+    # get scores for each starting unit
+    tiles = tiling.gen_tiles(im_orig, fill=0, method=method, sweep_dim=sweep_dim)  # masks each individual unit
     scores_orig_raw = score_funcs.get_scores_2d(model, method, ims=tiles, im_torch=im_torch,
                                                 pred_ims=pred_ims, model_type=model_type, device=device)
     scores_track = np.copy(refine_scores(scores_orig_raw, lab_num)).reshape(
         size_downsampled)  # keep track of these scores
 
     # threshold im
-    im_thresh = threshold_scores(scores_track, percentile_include, method)
+    im_thresh = threshold_scores(scores_track, percentile_include)
 
     # initialize lists
     scores_list = [np.copy(scores_track)]
@@ -374,15 +377,13 @@ def agglomerate_final(lists, model, pred_ims, percentile_include, method, sweep_
         # find connected components for regions
         comps = np.copy(measure.label(im_thresh_list[-1], background=0, connectivity=2))
 
-        # establish correspondence
+        # establish correspondence with components from previous iteration
         if step &gt; 0:
             comps_orig = np.copy(comps)
             try:
                 comps = establish_correspondence(comps_list[-1], comps_orig)
             except:
                 comps = comps_orig
-        # plt.imshow(comps)
-        # plt.show()
 
         comp_tiles = {}  # stores tiles corresponding to each tile
         if not method == &#39;cd&#39;:
@@ -435,7 +436,7 @@ def agglomerate_final(lists, model, pred_ims, percentile_include, method, sweep_
 
         # get class preds and thresholded image
         scores_track[im_thresh_list[-1]] = np.nan
-        im_thresh = threshold_scores(scores_track, percentile_include, method)
+        im_thresh = threshold_scores(scores_track, percentile_include)
         im_thresh_smoothed = smooth_im_thresh(im_thresh_list[-1], im_thresh)
 
         # add to lists
@@ -466,13 +467,15 @@ def agglomerate_final(lists, model, pred_ims, percentile_include, method, sweep_
 <span>def <span class="ident">agglomerate_final</span></span>(<span>lists, model, pred_ims, percentile_include, method, sweep_dim, im_orig, lab_num, num_iters=5, im_torch=None, model_type='mnist')</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Postprocess the final segmentation by joining the remaining segments</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def agglomerate_final(lists, model, pred_ims, percentile_include, method, sweep_dim,
                       im_orig, lab_num, num_iters=5, im_torch=None, model_type=&#39;mnist&#39;):
+    &#39;&#39;&#39;Postprocess the final segmentation by joining the remaining segments
+    &#39;&#39;&#39;
     # while multiple types of blobs
     while (np.unique(lists[&#39;comps_list&#39;][-1]).size &gt; 2):
         #     for q in range(3):
@@ -543,12 +546,14 @@ def agglomerate_final(lists, model, pred_ims, percentile_include, method, sweep_
 <span>def <span class="ident">establish_correspondence</span></span>(<span>seg1, seg2)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Establish correspondence between 2 segmentations of an image</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def establish_correspondence(seg1, seg2):
+    &#39;&#39;&#39;Establish correspondence between 2 segmentations of an image
+    &#39;&#39;&#39;
     seg_out = np.zeros(seg1.shape, dtype=&#39;int64&#39;)
     new_counter = 0
 
@@ -588,12 +593,14 @@ def agglomerate_final(lists, model, pred_ims, percentile_include, method, sweep_
 <span>def <span class="ident">refine_scores</span></span>(<span>scores, lab_num)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>How to convert scores to meaningful metric</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def refine_scores(scores, lab_num):
+    &#39;&#39;&#39;How to convert scores to meaningful metric
+    &#39;&#39;&#39;
     return scores[:, lab_num]</code></pre>
 </details>
 </dd>
@@ -601,20 +608,22 @@ def agglomerate_final(lists, model, pred_ims, percentile_include, method, sweep_
 <span>def <span class="ident">smooth_im_thresh</span></span>(<span>im_thresh_old, im_thresh)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Bias towards picking smoother components</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def smooth_im_thresh(im_thresh_old, im_thresh):
+    &#39;&#39;&#39;Bias towards picking smoother components
+    &#39;&#39;&#39;
     im = im_thresh_old + im_thresh
-    im_count_neighbors = convolve2d(im, filt, mode=&#39;same&#39;)
+    im_count_neighbors = convolve2d(im, FILT, mode=&#39;same&#39;)
     pixels_to_add = np.logical_and(np.logical_not(im), im_count_neighbors &gt;= 3)
     return im + pixels_to_add</code></pre>
 </details>
 </dd>
 <dt id="acd.agglomeration.agg_2d.threshold_scores"><code class="name flex">
-<span>def <span class="ident">threshold_scores</span></span>(<span>scores, percentile_include, method)</span>
+<span>def <span class="ident">threshold_scores</span></span>(<span>scores, percentile_include)</span>
 </code></dt>
 <dd>
 <section class="desc"></section>
@@ -622,15 +631,13 @@ def agglomerate_final(lists, model, pred_ims, percentile_include, method, sweep_
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">def threshold_scores(scores, percentile_include, method):
-    X = scores
-
+<pre><code class="python">def threshold_scores(scores, percentile_include):
     # pick more when more is already picked
     num_picked = np.sum(np.isnan(scores))
     if num_picked &gt; scores.size / 3:
         percentile_include -= 15
 
-    thresh = np.nanpercentile(X, percentile_include)
+    thresh = np.nanpercentile(scores, percentile_include)
     #     thresh = np.max(X) # pick only 1 pixel at a time
     im_thresh = np.logical_and(scores &gt;= thresh, ~np.isnan(scores))
     # scores &gt;= thresh #np.logical_and(scores &gt;= thresh, scores != 0)
@@ -638,7 +645,7 @@ def agglomerate_final(lists, model, pred_ims, percentile_include, method, sweep_
     # make sure we pick something
     while np.sum(im_thresh) == 0:
         percentile_include -= 4
-        thresh = np.nanpercentile(X, percentile_include)
+        thresh = np.nanpercentile(scores, percentile_include)
         #     thresh = np.max(X) # pick only 1 pixel at a time
         im_thresh = np.logical_and(scores &gt;= thresh, ~np.isnan(scores))
         # np.logical_and(scores &gt;= thresh, scores != 0)

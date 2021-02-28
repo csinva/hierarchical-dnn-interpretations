@@ -1,13 +1,13 @@
 import torch
 import torch.nn.functional as F
-from copy import deepcopy
 import numpy as np
 from scipy.special import expit as sigmoid
 from .cd_propagate import *
 from .cd_architecture_specific import *
 
+
 def cd(im_torch: torch.Tensor, model, mask=None, model_type=None, device='cuda', transform=None):
-    '''Get contextual decomposition scores for blob
+    '''Get contextual decomposition scores for some set of inputs for a specific image
     
     Params
     ------
@@ -23,7 +23,7 @@ def cd(im_torch: torch.Tensor, model, mask=None, model_type=None, device='cuda',
         if this is == 'mnist', uses CD for a specific mnist model
         if this is == 'resnet18', uses resnet18 model
     device: str, optional
-    transform: function
+    transform: function, optional
         transform should be a function which transforms the original image to specify rel
         only used if mask is not passed
         
@@ -38,33 +38,34 @@ def cd(im_torch: torch.Tensor, model, mask=None, model_type=None, device='cuda',
     model.eval()
     model = model.to(device)
     im_torch = im_torch.to(device)
-    
-    # set up masks
-    if not mask is None:
+
+    # set up relevant/irrelevant based on mask
+    if mask is not None:
         mask = torch.FloatTensor(mask).to(device)
         relevant = mask * im_torch
         irrelevant = (1 - mask) * im_torch
-    elif not transform is None:
+    elif transform is not None:
         relevant = transform(im_torch).to(device)
         if len(relevant.shape) < 4:
             relevant = relevant.reshape(1, 1, relevant.shape[0], relevant.shape[1])
         irrelevant = im_torch - relevant
     else:
-        print('invalid arguments')
+        print('mask or transform arguments required!')
     relevant = relevant.to(device)
     irrelevant = irrelevant.to(device)
 
-    # deal with specific architectures which have problems
+    # deal with specific architectures which cannot be handled generically
     if model_type == 'mnist':
         return cd_propagate_mnist(relevant, irrelevant, model)
     elif model_type == 'resnet18':
         return cd_propagate_resnet(relevant, irrelevant, model)
-    
+
     # try the generic case
     else:
         mods = list(model.modules())
         relevant, irrelevant = cd_generic(mods, relevant, irrelevant)
     return relevant, irrelevant
+
 
 def cd_generic(mods, relevant, irrelevant):
     '''Helper function for cd which loops over modules and propagates them 
@@ -81,7 +82,7 @@ def cd_generic(mods, relevant, irrelevant):
         elif 'ReLU' in t:
             relevant, irrelevant = propagate_relu(relevant, irrelevant, mod)
         elif 'AvgPool' in t or 'NormLayer' in t or 'Dropout' in t \
-             or 'ReshapeLayer' in t or ('modularize' in t and 'Transform' in t): # custom layers
+                or 'ReshapeLayer' in t or ('modularize' in t and 'Transform' in t):  # custom layers
             relevant, irrelevant = propagate_independent(relevant, irrelevant, mod)
         elif 'Pool' in t and not 'AvgPool' in t:
             relevant, irrelevant = propagate_pooling(relevant, irrelevant, mod)
@@ -151,7 +152,8 @@ def cd_text(batch, model, start, stop, return_irrel_scores=False):
         rel_contrib_g, irrel_contrib_g, bias_contrib_g = propagate_three(rel_g, irrel_g, b_g, np.tanh)
 
         relevant[i] = rel_contrib_i * (rel_contrib_g + bias_contrib_g) + bias_contrib_i * rel_contrib_g
-        irrelevant[i] = irrel_contrib_i * (rel_contrib_g + irrel_contrib_g + bias_contrib_g) + (rel_contrib_i + bias_contrib_i) * irrel_contrib_g
+        irrelevant[i] = irrel_contrib_i * (rel_contrib_g + irrel_contrib_g + bias_contrib_g) + (
+                    rel_contrib_i + bias_contrib_i) * irrel_contrib_g
 
         if i >= start and i <= stop:
             relevant[i] += bias_contrib_i * bias_contrib_g
@@ -162,7 +164,7 @@ def cd_text(batch, model, start, stop, return_irrel_scores=False):
             rel_contrib_f, irrel_contrib_f, bias_contrib_f = propagate_three(rel_f, irrel_f, b_f, sigmoid)
             relevant[i] += (rel_contrib_f + bias_contrib_f) * relevant[i - 1]
             irrelevant[i] += (rel_contrib_f + irrel_contrib_f + bias_contrib_f) * irrelevant[i - 1] + irrel_contrib_f * \
-                                                                                                      relevant[i - 1]
+                             relevant[i - 1]
 
         o = sigmoid(np.dot(W_io, word_vecs[i]) + np.dot(W_ho, prev_rel_h + prev_irrel_h) + b_o)
         rel_contrib_o, irrel_contrib_o, bias_contrib_o = propagate_three(rel_o, irrel_o, b_o, sigmoid)
@@ -180,5 +182,5 @@ def cd_text(batch, model, start, stop, return_irrel_scores=False):
 
     if return_irrel_scores:
         return scores, irrel_scores
-    
+
     return scores

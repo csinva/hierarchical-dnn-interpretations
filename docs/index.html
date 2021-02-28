@@ -27,6 +27,7 @@
 <p align="center">
 <img src="https://img.shields.io/badge/license-mit-blue.svg">
 <img src="https://img.shields.io/badge/python-3.6--3.8-blue">
+<img src="https://img.shields.io/badge/pytorch-1.0%2B-blue">
 <img src="https://img.shields.io/github/checks-status/csinva/hierarchical-dnn-interpretations/master">
 <img src="https://img.shields.io/pypi/v/acd?color=orange">
 <img src="https://static.pepy.tech/personalized-badge/acd?period=total&units=none&left_color=gray&right_color=orange&left_text=downloads">
@@ -45,7 +46,6 @@
 <li><strong>examples</strong>: the <a href="https://github.com/csinva/hierarchical-dnn-interpretations/tree/master/reproduce_figs">reproduce_figs</a> folder has notebooks with many demos</li>
 <li><strong>src</strong>: the <a href="acd">acd</a> folder contains the source for the method implementation</li>
 <li>allows for different types of interpretations by changing hyperparameters (explained in examples)</li>
-<li>test with pytorch &gt;1.0 with/without gpu </li>
 <li>all required data/models/code for reproducing are included in the <a href="dsets">dsets</a> folder</li>
 </ul>
 <table>
@@ -66,14 +66,14 @@
 </table>
 <h1 id="notes-on-using-acd-on-your-own-data">notes on using ACD on your own data</h1>
 <ul>
-<li>the current CD implementation doesn't always work for all types of networks. If you are getting an error inside of <code>cd.py</code>, you may need to write a custom function that iterates through the layers of your network (for examples see <code>cd.py</code>). Should work out-of-the-box for many common layers though, including antyhing in alexnet, vgg, or resnet.</li>
+<li>the current CD implementation often works out-of-the box, especially for networks built on common layers, such as alexnet/vgg/resnet. However, if you have custom layers or layers not accessible in <code>net.modules()</code>, you may need to write a custom function to iterate through some layers of your network (for examples see <code>cd.py</code>). </li>
 <li>to use baselines such build-up and occlusion, replace the pred_ims function by a function, which gets predictions from your model given a batch of examples.</li>
 </ul>
 <h1 id="related-work">related work</h1>
 <ul>
-<li>PDR framework (PNAS 2019 <a href="https://arxiv.org/abs/1901.04592">pdf</a>) - an overarching framewwork for guiding and framing interpretable machine learning</li>
 <li>CDEP (ICML 2020 <a href="https://arxiv.org/abs/1909.13584">pdf</a>, <a href="https://github.com/laura-rieger/deep-explanation-penalization">github</a>) - penalizes CD / ACD scores during training to make models generalize better</li>
 <li>TRIM (ICLR 2020 workshop <a href="https://arxiv.org/abs/2003.01926">pdf</a>, <a href="https://github.com/csinva/transformation-importance">github</a>) - using simple reparameterizations, allows for calculating disentangled importances to transformations of the input (e.g. assigning importances to different frequencies)</li>
+<li>PDR framework (PNAS 2019 <a href="https://arxiv.org/abs/1901.04592">pdf</a>) - an overarching framewwork for guiding and framing interpretable machine learning</li>
 <li>DAC (arXiv 2019 <a href="https://arxiv.org/abs/1905.07631">pdf</a>, <a href="https://github.com/csinva/disentangled-attribution-curves">github</a>) - finds disentangled interpretations for random forests</li>
 <li>Baseline interpretability methods - the file <code>scores/score_funcs.py</code> also contains simple pytorch implementations of <a href="https://arxiv.org/abs/1703.01365">integrated gradients</a> and the simple interpration technique <code>gradient * input</code></li>
 </ul>

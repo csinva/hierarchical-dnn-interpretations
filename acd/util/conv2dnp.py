@@ -1,4 +1,5 @@
-# code from https://github.com/renmengye/np-conv2d
+'''code from https://github.com/renmengye/np-conv2d
+'''
 
 from __future__ import division
 

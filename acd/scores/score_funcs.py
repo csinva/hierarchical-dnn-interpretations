@@ -1,12 +1,12 @@
-import torch
-import numpy as np
-import torch.nn.functional as F
-import torch.nn as nn
-import sys
-from ..util.conv2dnp import conv2dnp
 import copy
+
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
 from .cd import cd, cd_text
-from tqdm import tqdm
+from ..util.conv2dnp import conv2dnp
 
 
 def gradient_times_input_scores(im: np.ndarray, ind: int, model, device='cuda'):
@@ -29,19 +29,17 @@ def gradient_times_input_scores(im: np.ndarray, ind: int, model, device='cuda'):
     return res.data.cpu().numpy()[0, 0]
 
 
-
-
 def ig_scores_2d(model, im_torch, num_classes=10, im_size=28, sweep_dim=1, ind=None, device='cuda'):
     '''Compute integrated gradients scores (2D input)
     '''
-    
+
     for p in model.parameters():
         if p.grad is not None:
             p.grad.data.zero_()
-            
+
     # What class to produce explanations for
     output = np.zeros((im_size * im_size // (sweep_dim * sweep_dim), num_classes))
-    
+
     if ind is None:
         ind = range(num_classes)
     for class_to_explain in ind:
@@ -53,9 +51,9 @@ def ig_scores_2d(model, im_torch, num_classes=10, im_size=28, sweep_dim=1, ind=N
 
         baseline = torch.zeros(im_torch.shape).to(device)
 
-        input_vecs = torch.empty((M, baseline.shape[1],  baseline.shape[2], baseline.shape[3]), 
-                                  dtype=torch.float32,
-                                  device=device, requires_grad=False)
+        input_vecs = torch.empty((M, baseline.shape[1], baseline.shape[2], baseline.shape[3]),
+                                 dtype=torch.float32,
+                                 device=device, requires_grad=False)
         '''
         input_vecs = torch.Tensor(M, baseline.size(1), 
                                   baseline.size(2), baseline.size(3)).to(device)
@@ -63,9 +61,9 @@ def ig_scores_2d(model, im_torch, num_classes=10, im_size=28, sweep_dim=1, ind=N
         '''
         for i, prop in enumerate(mult_grid):
             input_vecs[i].data = baseline + (prop * (im_torch.to(device) - baseline))
-        input_vecs.requires_grad=True
+        input_vecs.requires_grad = True
 
-#         input_vecs = input_vecs
+        #         input_vecs = input_vecs
 
         out = F.softmax(model(input_vecs))[:, class_to_explain]
         loss = criterion(out, torch.zeros(M).to(device))
@@ -151,6 +149,7 @@ def get_scores_1d(batch, model, method, label, only_one, score_orig, text_orig, 
     else:
         return scores[:, label]
 
+
 def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type=None, device='cuda'):
     '''Return attribution scores for 2D input
     Params
@@ -168,7 +167,7 @@ def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type=N
     scores = []
     if method == 'cd':
         for i in range(ims.shape[0]):  # can use tqdm here, need to use batches
-            scores.append(cd(im_torch, model, np.expand_dims(ims[i], 0), model_type, 
+            scores.append(cd(im_torch, model, np.expand_dims(ims[i], 0), model_type,
                              device=device)[0].data.cpu().numpy())
         scores = np.squeeze(np.array(scores))
     elif method == 'build_up':
@@ -182,7 +181,6 @@ def get_scores_2d(model, method, ims, im_torch=None, pred_ims=None, model_type=N
     if scores.ndim == 1:
         scores = scores.reshape(1, -1)
     return scores
-
 
 
 def tiles_to_cd(batch):

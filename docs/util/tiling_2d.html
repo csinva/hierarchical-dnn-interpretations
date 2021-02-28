@@ -24,17 +24,15 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import numpy as np
-from math import ceil
+<pre><code class="python">from math import ceil
 
-
-def combine_tiles(tile1, tile2, method=&#39;cd&#39;):
-    if not method == &#39;occlusion&#39;:
-        return tile1 + tile2
+import numpy as np
 
 
 def gen_tiles(image, fill=0, method=&#39;occlusion&#39;, prev_im=None,
               sweep_dim=1, num_ims=None, im_num_start=0):
+    &#39;&#39;&#39;Generate all possible tilings given a granularity of sweep_dim and for a particular method
+    &#39;&#39;&#39;
     R = image.shape[0]
     C = image.shape[1]
 
@@ -123,9 +121,9 @@ def gen_tiles_around_baseline(im_orig, comp_tile, fill=0,
     return np.array(ims), idxs
 
 
-# generates full-size tile from comp which could be downsampled
-# todo: upsample for things that aren&#39;t cd
 def gen_tile_from_comp(im_orig, comp_tile_downsampled, sweep_dim, method, fill=0):
+    &#39;&#39;&#39;generates full-size tile from comp which could be downsampled
+    &#39;&#39;&#39;
     R = im_orig.shape[0]
     C = im_orig.shape[1]
     if method == &#39;occlusion&#39;:
@@ -154,7 +152,12 @@ def gen_tile_from_comp(im_orig, comp_tile_downsampled, sweep_dim, method, fill=0
             for c in range(comp_tile_downsampled.shape[1]):
                 if comp_tile_downsampled[r, c]:
                     im[r * sweep_dim: (r + 1) * sweep_dim, c * sweep_dim: (c + 1) * sweep_dim] = 1
-    return im</code></pre>
+    return im
+
+
+def combine_tiles(tile1, tile2, method=&#39;cd&#39;):
+    if not method == &#39;occlusion&#39;:
+        return tile1 + tile2</code></pre>
 </details>
 </section>
 <section>
@@ -182,12 +185,14 @@ def gen_tile_from_comp(im_orig, comp_tile_downsampled, sweep_dim, method, fill=0
 <span>def <span class="ident">gen_tile_from_comp</span></span>(<span>im_orig, comp_tile_downsampled, sweep_dim, method, fill=0)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>generates full-size tile from comp which could be downsampled</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def gen_tile_from_comp(im_orig, comp_tile_downsampled, sweep_dim, method, fill=0):
+    &#39;&#39;&#39;generates full-size tile from comp which could be downsampled
+    &#39;&#39;&#39;
     R = im_orig.shape[0]
     C = im_orig.shape[1]
     if method == &#39;occlusion&#39;:
@@ -223,13 +228,15 @@ def gen_tile_from_comp(im_orig, comp_tile_downsampled, sweep_dim, method, fill=0
 <span>def <span class="ident">gen_tiles</span></span>(<span>image, fill=0, method='occlusion', prev_im=None, sweep_dim=1, num_ims=None, im_num_start=0)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Generate all possible tilings given a granularity of sweep_dim and for a particular method</p></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def gen_tiles(image, fill=0, method=&#39;occlusion&#39;, prev_im=None,
               sweep_dim=1, num_ims=None, im_num_start=0):
+    &#39;&#39;&#39;Generate all possible tilings given a granularity of sweep_dim and for a particular method
+    &#39;&#39;&#39;
     R = image.shape[0]
     C = image.shape[1]
 

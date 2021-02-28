@@ -24,13 +24,12 @@
 <summary>
 <span>Expand source code</span>
 </summary>
-<pre><code class="python">import torch
-import torch.nn.functional as F
-from copy import deepcopy
+<pre><code class="python">from copy import deepcopy
+
 import numpy as np
+import torch
 from scipy.special import expit as sigmoid
 from torch import tanh
-
 
 
 def propagate_conv_linear(relevant, irrelevant, module):
@@ -44,8 +43,8 @@ def propagate_conv_linear(relevant, irrelevant, module):
     irrel = module(irrelevant) - bias
 
     # elementwise proportional
-    prop_rel = torch.abs(rel) + 1e-20 # add a small constant so we don&#39;t divide by 0
-    prop_irrel = torch.abs(irrel) + 1e-20 # add a small constant so we don&#39;t divide by 0
+    prop_rel = torch.abs(rel) + 1e-20  # add a small constant so we don&#39;t divide by 0
+    prop_irrel = torch.abs(irrel) + 1e-20  # add a small constant so we don&#39;t divide by 0
     prop_sum = prop_rel + prop_irrel
     prop_rel = torch.div(prop_rel, prop_sum)
     prop_irrel = torch.div(prop_irrel, prop_sum)
@@ -68,6 +67,7 @@ def propagate_batchnorm2d(relevant, irrelevant, module):
     irrel = module(relevant + irrelevant) - rel
     return rel, irrel
 
+
 def propagate_pooling(relevant, irrelevant, pooler):
     &#39;&#39;&#39;propagate pooling operation
     &#39;&#39;&#39;
@@ -75,7 +75,7 @@ def propagate_pooling(relevant, irrelevant, pooler):
     p = deepcopy(pooler)
     p.return_indices = True
     both, both_ind = p(relevant + irrelevant)
-    
+
     # unpooling function
     def unpool(tensor, indices):
         &#39;&#39;&#39;Unpool tensor given indices for pooling
@@ -84,11 +84,12 @@ def propagate_pooling(relevant, irrelevant, pooler):
         output = torch.ones_like(indices, dtype=torch.float)
         for i in range(batch_size):
             for j in range(in_channels):
-                output[i, j] = tensor[i, j].flatten()[indices[i, j].flatten()].reshape(H, W)                
+                output[i, j] = tensor[i, j].flatten()[indices[i, j].flatten()].reshape(H, W)
         return output
-    
+
     rel, irrel = unpool(relevant, both_ind), unpool(irrelevant, both_ind)
     return rel, irrel
+
 
 def propagate_independent(relevant, irrelevant, module):
     &#39;&#39;&#39;use for things which operate independently
@@ -96,10 +97,10 @@ def propagate_independent(relevant, irrelevant, module):
     &#39;&#39;&#39;
     return module(relevant), module(irrelevant)
 
+
 def propagate_relu(relevant, irrelevant, activation):
     &#39;&#39;&#39;propagate ReLu nonlinearity
     &#39;&#39;&#39;
-    device = relevant.device
     swap_inplace = False
     try:  # handles inplace
         if activation.inplace:
@@ -107,7 +108,6 @@ def propagate_relu(relevant, irrelevant, activation):
             activation.inplace = False
     except:
         pass
-    zeros = torch.zeros(relevant.size()).to(device)
     rel_score = activation(relevant)
     irrel_score = activation(relevant + irrelevant) - activation(relevant)
     if swap_inplace:
@@ -128,6 +128,7 @@ def propagate_tanh_two(a, b):
     &#39;&#39;&#39;
     return 0.5 * (np.tanh(a) + (np.tanh(a + b) - np.tanh(b))), 0.5 * (np.tanh(b) + (np.tanh(a + b) - np.tanh(a)))
 
+
 def propagate_basic_block(rel, irrel, module):
     &#39;&#39;&#39;Propagate a BasicBlock (used in the ResNet architectures)
     This is what the forward pass of the basic block looks like
@@ -146,21 +147,20 @@ def propagate_basic_block(rel, irrel, module):
     out = self.relu(out)
     &#39;&#39;&#39;
     from .cd import cd_generic
-#     for mod in module.modules():
-#         print(&#39;\tm&#39;, mod)
+    #     for mod in module.modules():
+    #         print(&#39;\tm&#39;, mod)
     rel_identity, irrel_identity = deepcopy(rel), deepcopy(irrel)
     rel, irrel = cd_generic(list(module.modules())[1:6], rel, irrel)
-    
-    
+
     if module.downsample is not None:
         rel_identity, irrel_identity = cd_generic(module.downsample.modules(), rel_identity, irrel_identity)
 
-    
     rel += rel_identity
     irrel += irrel_identity
-    rel, irrel = propagate_relu(rel, irrel, module.relu)  
-    
+    rel, irrel = propagate_relu(rel, irrel, module.relu)
+
     return rel, irrel
+
 
 def propagate_lstm(x, module, start: int, stop: int, my_device=0):
     &#39;&#39;&#39;module is an lstm layer
@@ -181,15 +181,15 @@ def propagate_lstm(x, module, start: int, stop: int, my_device=0):
     rel, irrel: torch.Tensor
         (batch_size, num_channels, num_hidden_lstm)
     &#39;&#39;&#39;
-    
+
     # extract out weights
     W_ii, W_if, W_ig, W_io = torch.chunk(module.weight_ih_l0, 4, 0)
     W_hi, W_hf, W_hg, W_ho = torch.chunk(module.weight_hh_l0, 4, 0)
     b_i, b_f, b_g, b_o = torch.chunk(module.bias_ih_l0 + module.bias_hh_l0, 4)
-    
+
     # prepare input x
-    x_orig = deepcopy(x)
-    x = x.permute(1, 2, 0) # convert to (seq_len, num_channels, batch_size)
+    # x_orig = deepcopy(x)
+    x = x.permute(1, 2, 0)  # convert to (seq_len, num_channels, batch_size)
     seq_len = x.shape[0]
     batch_size = x.shape[2]
     output_dim = W_ho.shape[1]
@@ -213,42 +213,43 @@ def propagate_lstm(x, module, start: int, stop: int, my_device=0):
             rel_i = rel_i + torch.matmul(W_ii, x[i])
             rel_g = rel_g + torch.matmul(W_ig, x[i])
             rel_f = rel_f + torch.matmul(W_if, x[i])
-            rel_o = rel_o + torch.matmul(W_io, x[i])
+            # rel_o = rel_o + torch.matmul(W_io, x[i])
         else:
             irrel_i = irrel_i + torch.matmul(W_ii, x[i])
             irrel_g = irrel_g + torch.matmul(W_ig, x[i])
             irrel_f = irrel_f + torch.matmul(W_if, x[i])
-            irrel_o = irrel_o + torch.matmul(W_io, x[i])
+            # irrel_o = irrel_o + torch.matmul(W_io, x[i])
 
-        rel_contrib_i, irrel_contrib_i, bias_contrib_i = propagate_three(rel_i, irrel_i, b_i[:,None], sigmoid)
-        rel_contrib_g, irrel_contrib_g, bias_contrib_g = propagate_three(rel_g, irrel_g, b_g[:,None], tanh)
+        rel_contrib_i, irrel_contrib_i, bias_contrib_i = propagate_three(rel_i, irrel_i, b_i[:, None], sigmoid)
+        rel_contrib_g, irrel_contrib_g, bias_contrib_g = propagate_three(rel_g, irrel_g, b_g[:, None], tanh)
 
         relevant = rel_contrib_i * (rel_contrib_g + bias_contrib_g) + bias_contrib_i * rel_contrib_g
-        irrelevant = irrel_contrib_i * (rel_contrib_g + irrel_contrib_g + bias_contrib_g) + (rel_contrib_i + bias_contrib_i) * irrel_contrib_g
+        irrelevant = irrel_contrib_i * (rel_contrib_g + irrel_contrib_g + bias_contrib_g) + (
+                rel_contrib_i + bias_contrib_i) * irrel_contrib_g
 
         if i &gt;= start and i &lt; stop:
-            relevant =relevant + bias_contrib_i * bias_contrib_g
-        else: 
-            irrelevant =irrelevant + bias_contrib_i * bias_contrib_g
+            relevant = relevant + bias_contrib_i * bias_contrib_g
+        else:
+            irrelevant = irrelevant + bias_contrib_i * bias_contrib_g
 
-        if i &gt; 0: 
-            rel_contrib_f, irrel_contrib_f, bias_contrib_f = propagate_three(rel_f, irrel_f, b_f[:,None], sigmoid)
-            relevant = relevant +(rel_contrib_f + bias_contrib_f) * prev_rel
-            irrelevant = irrelevant+(rel_contrib_f + irrel_contrib_f + bias_contrib_f) * prev_irrel + irrel_contrib_f *  prev_rel
+        if i &gt; 0:
+            rel_contrib_f, irrel_contrib_f, bias_contrib_f = propagate_three(rel_f, irrel_f, b_f[:, None], sigmoid)
+            relevant = relevant + (rel_contrib_f + bias_contrib_f) * prev_rel
+            irrelevant = irrelevant + (
+                    rel_contrib_f + irrel_contrib_f + bias_contrib_f) * prev_irrel + irrel_contrib_f * prev_rel
 
-        o = sigmoid(torch.matmul(W_io, x[i]) + torch.matmul(W_ho, prev_rel_h + prev_irrel_h) + b_o[:,None])     
+        o = sigmoid(torch.matmul(W_io, x[i]) + torch.matmul(W_ho, prev_rel_h + prev_irrel_h) + b_o[:, None])
         new_rel_h, new_irrel_h = propagate_tanh_two(relevant, irrelevant)
-      
+
         relevant_h = o * new_rel_h
         irrelevant_h = o * new_irrel_h
         prev_rel = relevant
         prev_irrel = irrelevant
 
-#     outputs, (h1, c1) = module(x_orig)
-#     assert np.allclose((relevant_h + irrelevant_h).detach().numpy().flatten(),
-#                        h1.detach().numpy().flatten(), rtol=0.01)
-    
-    
+    #     outputs, (h1, c1) = module(x_orig)
+    #     assert np.allclose((relevant_h + irrelevant_h).detach().numpy().flatten(),
+    #                        h1.detach().numpy().flatten(), rtol=0.01)
+
     # reshape output
     rel_h = relevant_h.transpose(0, 1).unsqueeze(1)
     irrel_h = irrelevant_h.transpose(0, 1).unsqueeze(1)
@@ -300,20 +301,18 @@ out = self.relu(out)</p></section>
     out = self.relu(out)
     &#39;&#39;&#39;
     from .cd import cd_generic
-#     for mod in module.modules():
-#         print(&#39;\tm&#39;, mod)
+    #     for mod in module.modules():
+    #         print(&#39;\tm&#39;, mod)
     rel_identity, irrel_identity = deepcopy(rel), deepcopy(irrel)
     rel, irrel = cd_generic(list(module.modules())[1:6], rel, irrel)
-    
-    
+
     if module.downsample is not None:
         rel_identity, irrel_identity = cd_generic(module.downsample.modules(), rel_identity, irrel_identity)
 
-    
     rel += rel_identity
     irrel += irrel_identity
-    rel, irrel = propagate_relu(rel, irrel, module.relu)  
-    
+    rel, irrel = propagate_relu(rel, irrel, module.relu)
+
     return rel, irrel</code></pre>
 </details>
 </dd>
@@ -365,8 +364,8 @@ Split bias based on the ratio of the absolute sums</p></section>
     irrel = module(irrelevant) - bias
 
     # elementwise proportional
-    prop_rel = torch.abs(rel) + 1e-20 # add a small constant so we don&#39;t divide by 0
-    prop_irrel = torch.abs(irrel) + 1e-20 # add a small constant so we don&#39;t divide by 0
+    prop_rel = torch.abs(rel) + 1e-20  # add a small constant so we don&#39;t divide by 0
+    prop_irrel = torch.abs(irrel) + 1e-20  # add a small constant so we don&#39;t divide by 0
     prop_sum = prop_rel + prop_irrel
     prop_rel = torch.div(prop_rel, prop_sum)
     prop_irrel = torch.div(prop_irrel, prop_sum)
@@ -435,15 +434,15 @@ warning: default lstm uses shape (seq_len, batch_size, num_channels)</dd>
     rel, irrel: torch.Tensor
         (batch_size, num_channels, num_hidden_lstm)
     &#39;&#39;&#39;
-    
+
     # extract out weights
     W_ii, W_if, W_ig, W_io = torch.chunk(module.weight_ih_l0, 4, 0)
     W_hi, W_hf, W_hg, W_ho = torch.chunk(module.weight_hh_l0, 4, 0)
     b_i, b_f, b_g, b_o = torch.chunk(module.bias_ih_l0 + module.bias_hh_l0, 4)
-    
+
     # prepare input x
-    x_orig = deepcopy(x)
-    x = x.permute(1, 2, 0) # convert to (seq_len, num_channels, batch_size)
+    # x_orig = deepcopy(x)
+    x = x.permute(1, 2, 0)  # convert to (seq_len, num_channels, batch_size)
     seq_len = x.shape[0]
     batch_size = x.shape[2]
     output_dim = W_ho.shape[1]
@@ -467,42 +466,43 @@ warning: default lstm uses shape (seq_len, batch_size, num_channels)</dd>
             rel_i = rel_i + torch.matmul(W_ii, x[i])
             rel_g = rel_g + torch.matmul(W_ig, x[i])
             rel_f = rel_f + torch.matmul(W_if, x[i])
-            rel_o = rel_o + torch.matmul(W_io, x[i])
+            # rel_o = rel_o + torch.matmul(W_io, x[i])
         else:
             irrel_i = irrel_i + torch.matmul(W_ii, x[i])
             irrel_g = irrel_g + torch.matmul(W_ig, x[i])
             irrel_f = irrel_f + torch.matmul(W_if, x[i])
-            irrel_o = irrel_o + torch.matmul(W_io, x[i])
+            # irrel_o = irrel_o + torch.matmul(W_io, x[i])
 
-        rel_contrib_i, irrel_contrib_i, bias_contrib_i = propagate_three(rel_i, irrel_i, b_i[:,None], sigmoid)
-        rel_contrib_g, irrel_contrib_g, bias_contrib_g = propagate_three(rel_g, irrel_g, b_g[:,None], tanh)
+        rel_contrib_i, irrel_contrib_i, bias_contrib_i = propagate_three(rel_i, irrel_i, b_i[:, None], sigmoid)
+        rel_contrib_g, irrel_contrib_g, bias_contrib_g = propagate_three(rel_g, irrel_g, b_g[:, None], tanh)
 
         relevant = rel_contrib_i * (rel_contrib_g + bias_contrib_g) + bias_contrib_i * rel_contrib_g
-        irrelevant = irrel_contrib_i * (rel_contrib_g + irrel_contrib_g + bias_contrib_g) + (rel_contrib_i + bias_contrib_i) * irrel_contrib_g
+        irrelevant = irrel_contrib_i * (rel_contrib_g + irrel_contrib_g + bias_contrib_g) + (
+                rel_contrib_i + bias_contrib_i) * irrel_contrib_g
 
         if i &gt;= start and i &lt; stop:
-            relevant =relevant + bias_contrib_i * bias_contrib_g
-        else: 
-            irrelevant =irrelevant + bias_contrib_i * bias_contrib_g
+            relevant = relevant + bias_contrib_i * bias_contrib_g
+        else:
+            irrelevant = irrelevant + bias_contrib_i * bias_contrib_g
 
-        if i &gt; 0: 
-            rel_contrib_f, irrel_contrib_f, bias_contrib_f = propagate_three(rel_f, irrel_f, b_f[:,None], sigmoid)
-            relevant = relevant +(rel_contrib_f + bias_contrib_f) * prev_rel
-            irrelevant = irrelevant+(rel_contrib_f + irrel_contrib_f + bias_contrib_f) * prev_irrel + irrel_contrib_f *  prev_rel
+        if i &gt; 0:
+            rel_contrib_f, irrel_contrib_f, bias_contrib_f = propagate_three(rel_f, irrel_f, b_f[:, None], sigmoid)
+            relevant = relevant + (rel_contrib_f + bias_contrib_f) * prev_rel
+            irrelevant = irrelevant + (
+                    rel_contrib_f + irrel_contrib_f + bias_contrib_f) * prev_irrel + irrel_contrib_f * prev_rel
 
-        o = sigmoid(torch.matmul(W_io, x[i]) + torch.matmul(W_ho, prev_rel_h + prev_irrel_h) + b_o[:,None])     
+        o = sigmoid(torch.matmul(W_io, x[i]) + torch.matmul(W_ho, prev_rel_h + prev_irrel_h) + b_o[:, None])
         new_rel_h, new_irrel_h = propagate_tanh_two(relevant, irrelevant)
-      
+
         relevant_h = o * new_rel_h
         irrelevant_h = o * new_irrel_h
         prev_rel = relevant
         prev_irrel = irrelevant
 
-#     outputs, (h1, c1) = module(x_orig)
-#     assert np.allclose((relevant_h + irrelevant_h).detach().numpy().flatten(),
-#                        h1.detach().numpy().flatten(), rtol=0.01)
-    
-    
+    #     outputs, (h1, c1) = module(x_orig)
+    #     assert np.allclose((relevant_h + irrelevant_h).detach().numpy().flatten(),
+    #                        h1.detach().numpy().flatten(), rtol=0.01)
+
     # reshape output
     rel_h = relevant_h.transpose(0, 1).unsqueeze(1)
     irrel_h = irrelevant_h.transpose(0, 1).unsqueeze(1)
@@ -525,7 +525,7 @@ warning: default lstm uses shape (seq_len, batch_size, num_channels)</dd>
     p = deepcopy(pooler)
     p.return_indices = True
     both, both_ind = p(relevant + irrelevant)
-    
+
     # unpooling function
     def unpool(tensor, indices):
         &#39;&#39;&#39;Unpool tensor given indices for pooling
@@ -534,9 +534,9 @@ warning: default lstm uses shape (seq_len, batch_size, num_channels)</dd>
         output = torch.ones_like(indices, dtype=torch.float)
         for i in range(batch_size):
             for j in range(in_channels):
-                output[i, j] = tensor[i, j].flatten()[indices[i, j].flatten()].reshape(H, W)                
+                output[i, j] = tensor[i, j].flatten()[indices[i, j].flatten()].reshape(H, W)
         return output
-    
+
     rel, irrel = unpool(relevant, both_ind), unpool(irrelevant, both_ind)
     return rel, irrel</code></pre>
 </details>
@@ -553,7 +553,6 @@ warning: default lstm uses shape (seq_len, batch_size, num_channels)</dd>
 <pre><code class="python">def propagate_relu(relevant, irrelevant, activation):
     &#39;&#39;&#39;propagate ReLu nonlinearity
     &#39;&#39;&#39;
-    device = relevant.device
     swap_inplace = False
     try:  # handles inplace
         if activation.inplace:
@@ -561,7 +560,6 @@ warning: default lstm uses shape (seq_len, batch_size, num_channels)</dd>
             activation.inplace = False
     except:
         pass
-    zeros = torch.zeros(relevant.size()).to(device)
     rel_score = activation(relevant)
     irrel_score = activation(relevant + irrelevant) - activation(relevant)
     if swap_inplace:

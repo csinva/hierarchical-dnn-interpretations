@@ -25,39 +25,26 @@
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">import numpy as np
-from ..util import tiling_1d as tiling
 import torch
 from skimage import measure
+
 from ..scores import score_funcs
+from ..util import tiling_1d as tiling
 
 
-# threshold scores at a specific percentile
-def threshold_scores(scores, percentile_include, absolute):
-    # pick based on abs value?
-    if absolute:
-        scores = np.absolute(scores)
-
-    # last 5 always pick 2
-    num_left = scores.size - np.sum(np.isnan(scores))
-    if num_left &lt;= 5:
-        if num_left == 5:
-            percentile_include = 59
-        elif num_left == 4:
-            percentile_include = 49
-        elif num_left == 3:
-            percentile_include = 59
-        elif num_left == 2:
-            percentile_include = 49
-        elif num_left == 1:
-            percentile_include = 0
-    thresh = np.nanpercentile(scores, percentile_include)
-    mask = scores &gt;= thresh
-    return mask
-
-
-# agglomerative sweep - black out selected pixels from before and resweep over the entire image
 def agglomerate(model, batch, percentile_include, method, sweep_dim,
                 label, num_iters=5, subtract=True, absolute=True, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;Agglomerative sweep - black out selected pixels from before and resweep over the entire image
+
+    Returns
+    -------
+    r: dict
+        r[&#39;comps_list&#39;]       - arrs of components with diff number for each comp
+        r[&#39;comp_scores_list&#39;] - dicts with score for each comp
+        r[&#39;mask_list&#39;]        - boolean arrs of selected
+        r[&#39;scores_list&#39;]      - arrs of scores (nan for selected)
+        r[&#39;score_orig&#39;]       - original score
+    &#39;&#39;&#39;
     # get original text and score
     text_orig = batch.text.data.cpu().numpy()
     score_orig = score_funcs.get_scores_1d(batch, model, method, label, only_one=True,
@@ -92,7 +79,7 @@ def agglomerate(model, batch, percentile_include, method, sweep_dim,
             comp_tile_bool = (comps == comp_num)
             comp_tile = tiling.gen_tile_from_comp(text_orig, comp_tile_bool, method)
 
-            # make tiles around component
+            # make neighboring tiles around component
             border_tiles = tiling.gen_tiles_around_baseline(text_orig, comp_tile_bool,
                                                             method=method,
                                                             sweep_dim=sweep_dim)
@@ -102,7 +89,7 @@ def agglomerate(model, batch, percentile_include, method, sweep_dim,
             tiles_concat = np.hstack((comp_tile, np.squeeze(border_tiles[0]).transpose()))
             batch.text.data = torch.LongTensor(tiles_concat).to(device)
 
-            # get scores (comp tile at 0, others afterwards)
+            # get scores for this component tile (index 0) and border tiles (indexes 1 onwards)
             scores_all = score_funcs.get_scores_1d(batch, model, method, label, only_one=False,
                                                    score_orig=score_orig, text_orig=text_orig, subtract=subtract,
                                                    device=device)
@@ -112,7 +99,7 @@ def agglomerate(model, batch, percentile_include, method, sweep_dim,
             # store the predicted class scores
             comp_scores_dict[comp_num] = np.copy(score_comp)
 
-            # update pixel scores
+            # update scores for different indexes
             tiles_idxs = border_tiles[1]
             for i, idx in enumerate(tiles_idxs):
                 scores[idx] = scores_border_tiles[i] - score_comp
@@ -133,30 +120,65 @@ def agglomerate(model, batch, percentile_include, method, sweep_dim,
     # pad first image
     comps_list = [np.zeros(text_orig.size, dtype=np.int)] + comps_list
 
-    return {&#39;scores_list&#39;: scores_list,  # arrs of scores (nan for selected)
-            &#39;mask_list&#39;: mask_list,  # boolean arrs of selected
-            &#39;comps_list&#39;: comps_list,  # arrs of comps with diff number for each comp
-            &#39;comp_scores_list&#39;: comp_scores_list,  # dicts with score for each comp
-            &#39;score_orig&#39;: score_orig}  # original score
+    return {
+        &#39;comps_list&#39;: comps_list,  # arrs of comps with diff number for each comp
+        &#39;scores_list&#39;: scores_list,  # arrs of scores (nan for selected)
+        &#39;mask_list&#39;: mask_list,  # boolean arrs of selected
+        &#39;comp_scores_list&#39;: comp_scores_list,  # dicts with score for each comp
+        &#39;score_orig&#39;: score_orig  # original score
+    }
 
 
-&#39;&#39;&#39;
-{&#39;scores_list&#39;: scores_list, # arrs of scores (nan for selected)
-&#39;mask_list&#39;: mask_list, # boolean arrs of selected
-&#39;comps_list&#39;: comps_list, # arrs of comps with diff number for each comp
-&#39;comp_scores_list&#39;: comp_scores_list, # dicts with score for each comp
-&#39;score_orig&#39;:score_orig} # original score
-&#39;&#39;&#39;
+def threshold_scores(scores, percentile_include, absolute):
+    &#39;&#39;&#39;threshold scores at a specific percentile
+
+    Returns
+    -------
+    mask: np.ndarray
+        Boolean mask which is true when scores should be kept
+    &#39;&#39;&#39;
+    # whether to threshold based on abs value
+    if absolute:
+        scores = np.absolute(scores)
+
+    # judgement call: last 5 always pick 2
+    num_left = scores.size - np.sum(np.isnan(scores))
+    if num_left &lt;= 5:
+        if num_left == 5:
+            percentile_include = 59
+        elif num_left == 4:
+            percentile_include = 49
+        elif num_left == 3:
+            percentile_include = 59
+        elif num_left == 2:
+            percentile_include = 49
+        elif num_left == 1:
+            percentile_include = 0
+    thresh = np.nanpercentile(scores, percentile_include)
+    mask = scores &gt;= thresh
+    return mask
 
 
 def collapse_tree(lists):
+    &#39;&#39;&#39;Removes redundant joins from final hierarchy
+    Params
+    ------
+    lists: dict
+        Dictionary of lists output by agglomerate
+
+    Returns
+    -------
+    lists: dicts
+        Dictionary of lists with redundant joins removed
+        i.e. merge whenever possible, if it doesn&#39;t skip a merge step
+    &#39;&#39;&#39;
     num_iters = len(lists[&#39;comps_list&#39;])
     num_words = len(lists[&#39;comps_list&#39;][0])
 
     # need to update comp_scores_list, comps_list
     comps_list = [np.zeros(num_words, dtype=np.int) for i in range(num_iters)]
-    comp_scores_list = [{0: 0} for i in range(num_iters)]
-    comp_levels_list = [{0: 0} for i in range(num_iters)]  # use this to determine what level to put things at
+    comp_scores_list = [{0: 0} for _ in range(num_iters)]
+    comp_levels_list = [{0: 0} for _ in range(num_iters)]  # use this to determine what level to put things at
 
     # initialize first level
     comps_list[0] = np.arange(num_words)
@@ -168,6 +190,7 @@ def collapse_tree(lists):
         comps_old = lists[&#39;comps_list&#39;][i - 1]
         comp_scores = lists[&#39;comp_scores_list&#39;][i]
 
+        # iterate over number of components
         for comp_num in range(1, np.max(comps) + 1):
             comp = comps == comp_num
             comp_size = np.sum(comp)
@@ -219,13 +242,37 @@ def collapse_tree(lists):
 <span>def <span class="ident">agglomerate</span></span>(<span>model, batch, percentile_include, method, sweep_dim, label, num_iters=5, subtract=True, absolute=True, device='cuda')</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Agglomerative sweep - black out selected pixels from before and resweep over the entire image</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>r</code></strong> :&ensp;<code>dict</code></dt>
+<dd>r['comps_list']
+- arrs of components with diff number for each comp
+r['comp_scores_list'] - dicts with score for each comp
+r['mask_list']
+- boolean arrs of selected
+r['scores_list']
+- arrs of scores (nan for selected)
+r['score_orig']
+- original score</dd>
+</dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def agglomerate(model, batch, percentile_include, method, sweep_dim,
                 label, num_iters=5, subtract=True, absolute=True, device=&#39;cuda&#39;):
+    &#39;&#39;&#39;Agglomerative sweep - black out selected pixels from before and resweep over the entire image
+
+    Returns
+    -------
+    r: dict
+        r[&#39;comps_list&#39;]       - arrs of components with diff number for each comp
+        r[&#39;comp_scores_list&#39;] - dicts with score for each comp
+        r[&#39;mask_list&#39;]        - boolean arrs of selected
+        r[&#39;scores_list&#39;]      - arrs of scores (nan for selected)
+        r[&#39;score_orig&#39;]       - original score
+    &#39;&#39;&#39;
     # get original text and score
     text_orig = batch.text.data.cpu().numpy()
     score_orig = score_funcs.get_scores_1d(batch, model, method, label, only_one=True,
@@ -260,7 +307,7 @@ def collapse_tree(lists):
             comp_tile_bool = (comps == comp_num)
             comp_tile = tiling.gen_tile_from_comp(text_orig, comp_tile_bool, method)
 
-            # make tiles around component
+            # make neighboring tiles around component
             border_tiles = tiling.gen_tiles_around_baseline(text_orig, comp_tile_bool,
                                                             method=method,
                                                             sweep_dim=sweep_dim)
@@ -270,7 +317,7 @@ def collapse_tree(lists):
             tiles_concat = np.hstack((comp_tile, np.squeeze(border_tiles[0]).transpose()))
             batch.text.data = torch.LongTensor(tiles_concat).to(device)
 
-            # get scores (comp tile at 0, others afterwards)
+            # get scores for this component tile (index 0) and border tiles (indexes 1 onwards)
             scores_all = score_funcs.get_scores_1d(batch, model, method, label, only_one=False,
                                                    score_orig=score_orig, text_orig=text_orig, subtract=subtract,
                                                    device=device)
@@ -280,7 +327,7 @@ def collapse_tree(lists):
             # store the predicted class scores
             comp_scores_dict[comp_num] = np.copy(score_comp)
 
-            # update pixel scores
+            # update scores for different indexes
             tiles_idxs = border_tiles[1]
             for i, idx in enumerate(tiles_idxs):
                 scores[idx] = scores_border_tiles[i] - score_comp
@@ -301,30 +348,56 @@ def collapse_tree(lists):
     # pad first image
     comps_list = [np.zeros(text_orig.size, dtype=np.int)] + comps_list
 
-    return {&#39;scores_list&#39;: scores_list,  # arrs of scores (nan for selected)
-            &#39;mask_list&#39;: mask_list,  # boolean arrs of selected
-            &#39;comps_list&#39;: comps_list,  # arrs of comps with diff number for each comp
-            &#39;comp_scores_list&#39;: comp_scores_list,  # dicts with score for each comp
-            &#39;score_orig&#39;: score_orig}  # original score</code></pre>
+    return {
+        &#39;comps_list&#39;: comps_list,  # arrs of comps with diff number for each comp
+        &#39;scores_list&#39;: scores_list,  # arrs of scores (nan for selected)
+        &#39;mask_list&#39;: mask_list,  # boolean arrs of selected
+        &#39;comp_scores_list&#39;: comp_scores_list,  # dicts with score for each comp
+        &#39;score_orig&#39;: score_orig  # original score
+    }</code></pre>
 </details>
 </dd>
 <dt id="acd.agglomeration.agg_1d.collapse_tree"><code class="name flex">
 <span>def <span class="ident">collapse_tree</span></span>(<span>lists)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>Removes redundant joins from final hierarchy
+Params</p>
+<hr>
+<dl>
+<dt><strong><code>lists</code></strong> :&ensp;<code>dict</code></dt>
+<dd>Dictionary of lists output by agglomerate</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>lists</code></strong> :&ensp;<code>dicts</code></dt>
+<dd>Dictionary of lists with redundant joins removed
+i.e. merge whenever possible, if it doesn't skip a merge step</dd>
+</dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def collapse_tree(lists):
+    &#39;&#39;&#39;Removes redundant joins from final hierarchy
+    Params
+    ------
+    lists: dict
+        Dictionary of lists output by agglomerate
+
+    Returns
+    -------
+    lists: dicts
+        Dictionary of lists with redundant joins removed
+        i.e. merge whenever possible, if it doesn&#39;t skip a merge step
+    &#39;&#39;&#39;
     num_iters = len(lists[&#39;comps_list&#39;])
     num_words = len(lists[&#39;comps_list&#39;][0])
 
     # need to update comp_scores_list, comps_list
     comps_list = [np.zeros(num_words, dtype=np.int) for i in range(num_iters)]
-    comp_scores_list = [{0: 0} for i in range(num_iters)]
-    comp_levels_list = [{0: 0} for i in range(num_iters)]  # use this to determine what level to put things at
+    comp_scores_list = [{0: 0} for _ in range(num_iters)]
+    comp_levels_list = [{0: 0} for _ in range(num_iters)]  # use this to determine what level to put things at
 
     # initialize first level
     comps_list[0] = np.arange(num_words)
@@ -336,6 +409,7 @@ def collapse_tree(lists):
         comps_old = lists[&#39;comps_list&#39;][i - 1]
         comp_scores = lists[&#39;comp_scores_list&#39;][i]
 
+        # iterate over number of components
         for comp_num in range(1, np.max(comps) + 1):
             comp = comps == comp_num
             comp_size = np.sum(comp)
@@ -380,17 +454,29 @@ def collapse_tree(lists):
 <span>def <span class="ident">threshold_scores</span></span>(<span>scores, percentile_include, absolute)</span>
 </code></dt>
 <dd>
-<section class="desc"></section>
+<section class="desc"><p>threshold scores at a specific percentile</p>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>mask</code></strong> :&ensp;<code>np.ndarray</code></dt>
+<dd>Boolean mask which is true when scores should be kept</dd>
+</dl></section>
 <details class="source">
 <summary>
 <span>Expand source code</span>
 </summary>
 <pre><code class="python">def threshold_scores(scores, percentile_include, absolute):
-    # pick based on abs value?
+    &#39;&#39;&#39;threshold scores at a specific percentile
+
+    Returns
+    -------
+    mask: np.ndarray
+        Boolean mask which is true when scores should be kept
+    &#39;&#39;&#39;
+    # whether to threshold based on abs value
     if absolute:
         scores = np.absolute(scores)
 
-    # last 5 always pick 2
+    # judgement call: last 5 always pick 2
     num_left = scores.size - np.sum(np.isnan(scores))
     if num_left &lt;= 5:
         if num_left == 5:

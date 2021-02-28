@@ -11,3 +11,5 @@ reproduce_figs/mnist/data
 **egg*
 build
 dist
+venv
+test-output.xml

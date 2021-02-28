@@ -37,7 +37,7 @@ def gen_tile_from_comp(text_orig, comp_tile, method, fill=0):
 
 
 def gen_tiles_around_baseline(text_orig, comp_tile, method='build_up', sweep_dim=1, fill=0):
-    '''generate tiles around component
+    '''generate tiles around a component (varies based on method)
     '''
     L = text_orig.shape[0]
     left = 0

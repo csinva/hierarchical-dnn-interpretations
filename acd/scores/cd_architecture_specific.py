@@ -1,8 +1,6 @@
 import torch
 import torch.nn.functional as F
-from copy import deepcopy
-import numpy as np
-from scipy.special import expit as sigmoid
+
 from .cd_propagate import *
 
 
@@ -30,14 +28,14 @@ def cd_propagate_resnet(rel, irrel, model):
     x = torch.flatten(x, 1)
     x = self.fc(x)
     '''
-    
+
     rel, irrel = cd_generic(mods[1:5], rel, irrel)
 
     lay_nums = [5, 18, 34, 50]
     for lay_num in lay_nums:
         for basic_block in mods[lay_num]:
             rel, irrel = propagate_basic_block(rel, irrel, basic_block)
-    
+
     # final things after BasicBlocks
     rel, irrel = cd_generic(mods[-2:], rel, irrel)
     return rel, irrel
