@@ -95,7 +95,7 @@ if config.birnn:
 if args.resume_snapshot:
     model = torch.load(args.resume_snapshot, map_location=lambda storage, location: storage.cuda(args.gpu))
 else:
-    model = LSTMSentiment(config)
+    model = LSTMSentiment(config=config)
     if args.word_vectors:
         model.embed.weight.data = inputs.vocab.vectors
         model.cuda()

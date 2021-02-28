@@ -31,7 +31,7 @@ def get_args():
 
 # load data
 def load_data(train_batch_size, test_batch_size, device, data_dir='data', shuffle=False):
-    kwargs = {'num_workers': 1, 'pin_memory': True} if device == 'cuda' else {}
+    kwargs = {} #{'num_workers': 1, 'pin_memory': True} if device == 'cuda' else {}
     train_loader = torch.utils.data.DataLoader(
         datasets.MNIST(data_dir, train=True, download=True,
                        transform=transforms.Compose([

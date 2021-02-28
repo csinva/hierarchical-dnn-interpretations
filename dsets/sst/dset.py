@@ -1,7 +1,19 @@
 import torch
 import numpy as np
-from torchtext import data, datasets
+from torchtext import data, datasets, vocab
 import random
+import os
+import pickle as pkl
+import sys
+path_to_file = os.path.dirname(__file__)
+
+# deal with different torchtext versions
+try:
+    vocab._default_unk_index
+except AttributeError:
+    def _default_unk_index():
+        return 0
+vocab._default_unk_index = _default_unk_index
 
 
 # set up data loaders
@@ -52,3 +64,18 @@ def get_batches(batch_nums, train_iterator, dev_iterator, dset='dev'):
             print('found them all')
             break
     return batches
+
+def load_vocab():
+    return pkl.load(open(os.path.join(path_to_file, 'sst_vocab.pkl'), 'rb'))
+
+def load_model():
+    model = LSTMSentiment()
+    
+def batch_from_str_list(s, vocab, device='cpu'):
+    '''Put text into .text attribute of a batch
+    '''
+    batch = lambda: None # placeholder which holds .text attribute
+    nums = np.expand_dims(np.array([vocab['stoi'][x] for x in s]).transpose(),
+                          axis=1)
+    batch.text = torch.LongTensor(nums).to(device) #cuda()
+    return batch

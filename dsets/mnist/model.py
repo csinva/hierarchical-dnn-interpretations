@@ -3,8 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-# define net
 class Net(nn.Module):
+    '''A simple conv net
+    '''
     def __init__(self):
         super(Net, self).__init__()
         self.conv1 = nn.Conv2d(1, 10, kernel_size=5)
