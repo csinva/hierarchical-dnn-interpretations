@@ -436,7 +436,7 @@ In reality, one should use the loop contained in the above cd function</p></sect
 <span>def <span class="ident">tanh</span></span>(<span>...)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>tanh(input, *, out=None) -&gt; Tensor</p>
+<section class="desc"><p>tanh(input, out=None) -&gt; Tensor</p>
 <p>Returns a new tensor with the hyperbolic tangent of the elements
 of :attr:<code>input</code>.</p>
 <p>[ \text{out}<em i>{i} = \tanh(\text{input}</em>) ]</p>
@@ -444,9 +444,9 @@ of :attr:<code>input</code>.</p>
 <dl>
 <dt><strong><code>input</code></strong> :&ensp;<code>Tensor</code></dt>
 <dd>the input tensor.</dd>
+<dt><strong><code>out</code></strong> :&ensp;<code>Tensor</code>, optional</dt>
+<dd>the output tensor.</dd>
 </dl>
-<p>Keyword args:
-out (Tensor, optional): the output tensor.</p>
 <p>Example::</p>
 <pre><code>&gt;&gt;&gt; a = torch.randn(4)
 &gt;&gt;&gt; a

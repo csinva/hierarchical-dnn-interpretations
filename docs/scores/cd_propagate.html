@@ -253,6 +253,108 @@ def propagate_lstm(x, module, start: int, stop: int, my_device=0):
     # reshape output
     rel_h = relevant_h.transpose(0, 1).unsqueeze(1)
     irrel_h = irrelevant_h.transpose(0, 1).unsqueeze(1)
+    return rel_h, irrel_h
+
+def propagate_lstm_block(x_rel, x_irrel, module, start: int, stop: int, my_device=0):
+    &#39;&#39;&#39;module is an lstm layer. This function still experimental
+    
+    Params
+    ------
+    module: lstm layer
+    x_rel: torch.Tensor
+        (batch_size, seq_len, num_channels)
+        warning: default lstm uses shape (seq_len, batch_size, num_channels)
+    x_irrel: torch.Tensor
+        (batch_size, seq_len, num_channels)
+    start: int
+        start of relevant sequence
+    stop: int
+        end of relevant sequence
+    weights: torch.Tensor
+        (seq_len)
+        
+    Returns
+    -------
+    rel, irrel: torch.Tensor
+        (batch_size, num_channels, num_hidden_lstm)
+    &#39;&#39;&#39;
+
+    # ex_reltract out weights
+    W_ii, W_if, W_ig, W_io = torch.chunk(module.weight_ih_l0, 4, 0)
+    W_hi, W_hf, W_hg, W_ho = torch.chunk(module.weight_hh_l0, 4, 0)
+    b_i, b_f, b_g, b_o = torch.chunk(module.bias_ih_l0 + module.bias_hh_l0, 4)
+
+    # prepare input x
+    # x_orig = deepcopy(x)
+    x_rel = x_rel.permute(1, 2, 0)  # convert to (seq_len, num_channels, batch_size)
+    x_irrel = x_irrel.permute(1, 2, 0)  # convert to (seq_len, num_channels, batch_size)
+    x = x_rel + x_irrel
+    # print(&#39;shapes&#39;, x_rel.shape, x_irrel.shape, x.shape)
+    seq_len = x_rel.shape[0]
+    batch_size = x_rel.shape[2]
+    output_dim = W_ho.shape[1]
+    relevant_h = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    irrelevant_h = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    prev_rel = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    prev_irrel = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    for i in range(seq_len):
+        prev_rel_h = relevant_h
+        prev_irrel_h = irrelevant_h
+        rel_i = torch.matmul(W_hi, prev_rel_h)
+        rel_g = torch.matmul(W_hg, prev_rel_h)
+        rel_f = torch.matmul(W_hf, prev_rel_h)
+        rel_o = torch.matmul(W_ho, prev_rel_h)
+        irrel_i = torch.matmul(W_hi, prev_irrel_h)
+        irrel_g = torch.matmul(W_hg, prev_irrel_h)
+        irrel_f = torch.matmul(W_hf, prev_irrel_h)
+        irrel_o = torch.matmul(W_ho, prev_irrel_h)
+
+        # relevant parts
+        rel_i = rel_i + torch.matmul(W_ii, x_rel[i])
+        rel_g = rel_g + torch.matmul(W_ig, x_rel[i])
+        rel_f = rel_f + torch.matmul(W_if, x_rel[i])
+        # rel_o = rel_o + torch.matmul(W_io, x[i])
+        
+        # irrelevant parts
+        irrel_i = irrel_i + torch.matmul(W_ii, x_irrel[i])
+        irrel_g = irrel_g + torch.matmul(W_ig, x_irrel[i])
+        irrel_f = irrel_f + torch.matmul(W_if, x_irrel[i])
+        # irrel_o = irrel_o + torch.matmul(W_io, x[i])
+
+        rel_contrib_i, irrel_contrib_i, bias_contrib_i = propagate_three(rel_i, irrel_i, b_i[:, None], sigmoid)
+        rel_contrib_g, irrel_contrib_g, bias_contrib_g = propagate_three(rel_g, irrel_g, b_g[:, None], tanh)
+
+        relevant = rel_contrib_i * (rel_contrib_g + bias_contrib_g) + \
+            bias_contrib_i * rel_contrib_g
+        irrelevant = irrel_contrib_i * (rel_contrib_g + irrel_contrib_g + bias_contrib_g) + \
+            (rel_contrib_i + bias_contrib_i) * irrel_contrib_g
+
+        # if i &gt;= start and i &lt; stop:
+        relevant = relevant + bias_contrib_i * bias_contrib_g
+        # else:
+        irrelevant = irrelevant + bias_contrib_i * bias_contrib_g
+
+        if i &gt; 0:
+            rel_contrib_f, irrel_contrib_f, bias_contrib_f = propagate_three(rel_f, irrel_f, b_f[:, None], sigmoid)
+            relevant = relevant + (rel_contrib_f + bias_contrib_f) * prev_rel
+            irrelevant = irrelevant + (
+                    rel_contrib_f + irrel_contrib_f + bias_contrib_f) * prev_irrel + irrel_contrib_f * prev_rel
+
+        o = sigmoid(torch.matmul(W_io, x[i]) + torch.matmul(W_ho, prev_rel_h + prev_irrel_h) + b_o[:, None])
+        new_rel_h, new_irrel_h = propagate_tanh_two(relevant, irrelevant)
+
+        relevant_h = o * new_rel_h
+        irrelevant_h = o * new_irrel_h
+        prev_rel = relevant
+        prev_irrel = irrelevant
+
+    #     outputs, (h1, c1) = module(x_orig)
+    #     assert np.allclose((relevant_h + irrelevant_h).detach().numpy().flatten(),
+    #                        h1.detach().numpy().flatten(), rtol=0.01)
+
+    # reshape output
+    rel_h = relevant_h.transpose(0, 1).unsqueeze(1)
+    irrel_h = irrelevant_h.transpose(0, 1).unsqueeze(1)
     return rel_h, irrel_h</code></pre>
 </details>
 </section>
@@ -509,6 +611,139 @@ warning: default lstm uses shape (seq_len, batch_size, num_channels)</dd>
     return rel_h, irrel_h</code></pre>
 </details>
 </dd>
+<dt id="acd.scores.cd_propagate.propagate_lstm_block"><code class="name flex">
+<span>def <span class="ident">propagate_lstm_block</span></span>(<span>x_rel, x_irrel, module, start, stop, my_device=0)</span>
+</code></dt>
+<dd>
+<section class="desc"><p>module is an lstm layer. This function still experimental</p>
+<h2 id="params">Params</h2>
+<dl>
+<dt><strong><code>module</code></strong> :&ensp;<code>lstm</code> <code>layer</code></dt>
+<dd>&nbsp;</dd>
+<dt><strong><code>x_rel</code></strong> :&ensp;<code>torch.Tensor</code></dt>
+<dd>(batch_size, seq_len, num_channels)
+warning: default lstm uses shape (seq_len, batch_size, num_channels)</dd>
+<dt><strong><code>x_irrel</code></strong> :&ensp;<code>torch.Tensor</code></dt>
+<dd>(batch_size, seq_len, num_channels)</dd>
+<dt><strong><code>start</code></strong> :&ensp;<code>int</code></dt>
+<dd>start of relevant sequence</dd>
+<dt><strong><code>stop</code></strong> :&ensp;<code>int</code></dt>
+<dd>end of relevant sequence</dd>
+<dt><strong><code>weights</code></strong> :&ensp;<code>torch.Tensor</code></dt>
+<dd>(seq_len)</dd>
+</dl>
+<h2 id="returns">Returns</h2>
+<dl>
+<dt><strong><code>rel</code></strong>, <strong><code>irrel</code></strong> :&ensp;<code>torch.Tensor</code></dt>
+<dd>(batch_size, num_channels, num_hidden_lstm)</dd>
+</dl></section>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+</summary>
+<pre><code class="python">def propagate_lstm_block(x_rel, x_irrel, module, start: int, stop: int, my_device=0):
+    &#39;&#39;&#39;module is an lstm layer. This function still experimental
+    
+    Params
+    ------
+    module: lstm layer
+    x_rel: torch.Tensor
+        (batch_size, seq_len, num_channels)
+        warning: default lstm uses shape (seq_len, batch_size, num_channels)
+    x_irrel: torch.Tensor
+        (batch_size, seq_len, num_channels)
+    start: int
+        start of relevant sequence
+    stop: int
+        end of relevant sequence
+    weights: torch.Tensor
+        (seq_len)
+        
+    Returns
+    -------
+    rel, irrel: torch.Tensor
+        (batch_size, num_channels, num_hidden_lstm)
+    &#39;&#39;&#39;
+
+    # ex_reltract out weights
+    W_ii, W_if, W_ig, W_io = torch.chunk(module.weight_ih_l0, 4, 0)
+    W_hi, W_hf, W_hg, W_ho = torch.chunk(module.weight_hh_l0, 4, 0)
+    b_i, b_f, b_g, b_o = torch.chunk(module.bias_ih_l0 + module.bias_hh_l0, 4)
+
+    # prepare input x
+    # x_orig = deepcopy(x)
+    x_rel = x_rel.permute(1, 2, 0)  # convert to (seq_len, num_channels, batch_size)
+    x_irrel = x_irrel.permute(1, 2, 0)  # convert to (seq_len, num_channels, batch_size)
+    x = x_rel + x_irrel
+    # print(&#39;shapes&#39;, x_rel.shape, x_irrel.shape, x.shape)
+    seq_len = x_rel.shape[0]
+    batch_size = x_rel.shape[2]
+    output_dim = W_ho.shape[1]
+    relevant_h = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    irrelevant_h = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    prev_rel = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    prev_irrel = torch.zeros((output_dim, batch_size), device=torch.device(my_device), requires_grad=False)
+    for i in range(seq_len):
+        prev_rel_h = relevant_h
+        prev_irrel_h = irrelevant_h
+        rel_i = torch.matmul(W_hi, prev_rel_h)
+        rel_g = torch.matmul(W_hg, prev_rel_h)
+        rel_f = torch.matmul(W_hf, prev_rel_h)
+        rel_o = torch.matmul(W_ho, prev_rel_h)
+        irrel_i = torch.matmul(W_hi, prev_irrel_h)
+        irrel_g = torch.matmul(W_hg, prev_irrel_h)
+        irrel_f = torch.matmul(W_hf, prev_irrel_h)
+        irrel_o = torch.matmul(W_ho, prev_irrel_h)
+
+        # relevant parts
+        rel_i = rel_i + torch.matmul(W_ii, x_rel[i])
+        rel_g = rel_g + torch.matmul(W_ig, x_rel[i])
+        rel_f = rel_f + torch.matmul(W_if, x_rel[i])
+        # rel_o = rel_o + torch.matmul(W_io, x[i])
+        
+        # irrelevant parts
+        irrel_i = irrel_i + torch.matmul(W_ii, x_irrel[i])
+        irrel_g = irrel_g + torch.matmul(W_ig, x_irrel[i])
+        irrel_f = irrel_f + torch.matmul(W_if, x_irrel[i])
+        # irrel_o = irrel_o + torch.matmul(W_io, x[i])
+
+        rel_contrib_i, irrel_contrib_i, bias_contrib_i = propagate_three(rel_i, irrel_i, b_i[:, None], sigmoid)
+        rel_contrib_g, irrel_contrib_g, bias_contrib_g = propagate_three(rel_g, irrel_g, b_g[:, None], tanh)
+
+        relevant = rel_contrib_i * (rel_contrib_g + bias_contrib_g) + \
+            bias_contrib_i * rel_contrib_g
+        irrelevant = irrel_contrib_i * (rel_contrib_g + irrel_contrib_g + bias_contrib_g) + \
+            (rel_contrib_i + bias_contrib_i) * irrel_contrib_g
+
+        # if i &gt;= start and i &lt; stop:
+        relevant = relevant + bias_contrib_i * bias_contrib_g
+        # else:
+        irrelevant = irrelevant + bias_contrib_i * bias_contrib_g
+
+        if i &gt; 0:
+            rel_contrib_f, irrel_contrib_f, bias_contrib_f = propagate_three(rel_f, irrel_f, b_f[:, None], sigmoid)
+            relevant = relevant + (rel_contrib_f + bias_contrib_f) * prev_rel
+            irrelevant = irrelevant + (
+                    rel_contrib_f + irrel_contrib_f + bias_contrib_f) * prev_irrel + irrel_contrib_f * prev_rel
+
+        o = sigmoid(torch.matmul(W_io, x[i]) + torch.matmul(W_ho, prev_rel_h + prev_irrel_h) + b_o[:, None])
+        new_rel_h, new_irrel_h = propagate_tanh_two(relevant, irrelevant)
+
+        relevant_h = o * new_rel_h
+        irrelevant_h = o * new_irrel_h
+        prev_rel = relevant
+        prev_irrel = irrelevant
+
+    #     outputs, (h1, c1) = module(x_orig)
+    #     assert np.allclose((relevant_h + irrelevant_h).detach().numpy().flatten(),
+    #                        h1.detach().numpy().flatten(), rtol=0.01)
+
+    # reshape output
+    rel_h = relevant_h.transpose(0, 1).unsqueeze(1)
+    irrel_h = irrelevant_h.transpose(0, 1).unsqueeze(1)
+    return rel_h, irrel_h</code></pre>
+</details>
+</dd>
 <dt id="acd.scores.cd_propagate.propagate_pooling"><code class="name flex">
 <span>def <span class="ident">propagate_pooling</span></span>(<span>relevant, irrelevant, pooler)</span>
 </code></dt>
@@ -603,7 +838,7 @@ warning: default lstm uses shape (seq_len, batch_size, num_channels)</dd>
 <span>def <span class="ident">tanh</span></span>(<span>...)</span>
 </code></dt>
 <dd>
-<section class="desc"><p>tanh(input, *, out=None) -&gt; Tensor</p>
+<section class="desc"><p>tanh(input, out=None) -&gt; Tensor</p>
 <p>Returns a new tensor with the hyperbolic tangent of the elements
 of :attr:<code>input</code>.</p>
 <p>[ \text{out}<em i>{i} = \tanh(\text{input}</em>) ]</p>
@@ -611,9 +846,9 @@ of :attr:<code>input</code>.</p>
 <dl>
 <dt><strong><code>input</code></strong> :&ensp;<code>Tensor</code></dt>
 <dd>the input tensor.</dd>
+<dt><strong><code>out</code></strong> :&ensp;<code>Tensor</code>, optional</dt>
+<dd>the output tensor.</dd>
 </dl>
-<p>Keyword args:
-out (Tensor, optional): the output tensor.</p>
 <p>Example::</p>
 <pre><code>&gt;&gt;&gt; a = torch.randn(4)
 &gt;&gt;&gt; a
@@ -645,6 +880,7 @@ tensor([ 0.7156, -0.6218,  0.8257,  0.2553])
 <li><code><a title="acd.scores.cd_propagate.propagate_conv_linear" href="#acd.scores.cd_propagate.propagate_conv_linear">propagate_conv_linear</a></code></li>
 <li><code><a title="acd.scores.cd_propagate.propagate_independent" href="#acd.scores.cd_propagate.propagate_independent">propagate_independent</a></code></li>
 <li><code><a title="acd.scores.cd_propagate.propagate_lstm" href="#acd.scores.cd_propagate.propagate_lstm">propagate_lstm</a></code></li>
+<li><code><a title="acd.scores.cd_propagate.propagate_lstm_block" href="#acd.scores.cd_propagate.propagate_lstm_block">propagate_lstm_block</a></code></li>
 <li><code><a title="acd.scores.cd_propagate.propagate_pooling" href="#acd.scores.cd_propagate.propagate_pooling">propagate_pooling</a></code></li>
 <li><code><a title="acd.scores.cd_propagate.propagate_relu" href="#acd.scores.cd_propagate.propagate_relu">propagate_relu</a></code></li>
 <li><code><a title="acd.scores.cd_propagate.propagate_tanh_two" href="#acd.scores.cd_propagate.propagate_tanh_two">propagate_tanh_two</a></code></li>
